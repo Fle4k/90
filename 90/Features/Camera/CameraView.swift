@@ -11,191 +11,163 @@ struct CameraView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Timer Display
-                    TimerDisplayView(duration: viewModel.formattedDuration)
-                        .padding(.top, 60)
                     
                     Spacer()
+                    // Full-width camera preview area (16:9)
+                    CameraPreviewArea(geometry: geometry)
                     
-                    // 16:9 Preview Area
-                    CameraPreviewArea(
-                        showsCropOverlay: viewModel.showsCropOverlay,
-                        geometry: geometry
+                    // Timer and zoom controls directly below preview
+                    HStack {
+                        // Timer on left
+                        Text(viewModel.formattedDuration)
+                            .font(.system(size: 18, weight: .medium, design: .monospaced))
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        // Zoom controls on right
+                        HStack(spacing: 20) {
+                            Button(action: {}) {
+                                Image(systemName: "minus")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Button(action: {}) {
+                                Image(systemName: "plus")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    
+                    // More space before ring menu
+                    Spacer()
+                    
+                    // Ring menu with PDF background and 8 buttons
+                    RingMenuView(
+                        isRecording: viewModel.isRecording,
+                        onRecordTap: {
+                            viewModel.toggleRecording()
+                        }
                     )
-                    
-                    Spacer()
-                    
-                    // Circular Controls
-                    CircularControlsView(viewModel: viewModel)
-                        .frame(height: CameraConfiguration.controlsHeight)
-                        .padding(.bottom, 50)
+                    .padding(.bottom, 50)
                 }
             }
         }
-        .environmentObject(viewModel)
+        .preferredColorScheme(.dark)
+        .onAppear {
+            viewModel.requestPermissions()
+        }
     }
 }
 
-// MARK: - Timer Display
-struct TimerDisplayView: View {
-    let duration: String
-    
-    var body: some View {
-        Text(duration)
-            .font(.system(size: UIConstants.timerFontSize, weight: .medium, design: .monospaced))
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.black.opacity(0.3))
-            )
-    }
-}
-
-// MARK: - Preview Area
+// MARK: - Camera Preview Area
 struct CameraPreviewArea: View {
-    let showsCropOverlay: Bool
     let geometry: GeometryProxy
     
-    private var previewSize: CGSize {
-        let width = geometry.size.width - 40
-        let height = width / CameraConfiguration.aspectRatio
-        return CGSize(width: width, height: height)
+    private var previewHeight: CGFloat {
+        geometry.size.width / (16/9) // 16:9 aspect ratio
     }
     
     var body: some View {
         ZStack {
-            // Camera Preview (placeholder for now)
-            RoundedRectangle(cornerRadius: CameraConfiguration.previewCornerRadius)
-                .fill(Color.gray.opacity(0.3))
-                .frame(width: previewSize.width, height: previewSize.height)
-                .overlay(
-                    Image(systemName: "camera")
-                        .font(.system(size: 60))
-                        .foregroundColor(.white.opacity(0.6))
+            // Camera preview background - will be replaced with actual camera
+            Rectangle()
+                .fill(
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color.blue.opacity(0.6),
+                            Color.teal.opacity(0.8),
+                            Color.green.opacity(0.4)
+                        ]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
+                .frame(width: geometry.size.width, height: previewHeight)
             
-            // 16:9 Crop Overlay
-            if showsCropOverlay {
-                RoundedRectangle(cornerRadius: CameraConfiguration.previewCornerRadius)
-                    .stroke(Color.white, lineWidth: 2)
-                    .frame(width: previewSize.width, height: previewSize.height)
-            }
+            // Landscape preview content (simulating your target image)
+            Image(systemName: "mountain.2.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.white.opacity(0.7))
         }
-        .padding(.horizontal, 20)
+        .clipped()
     }
 }
 
-// MARK: - Circular Controls
-struct CircularControlsView: View {
-    @ObservedObject var viewModel: CameraViewModel
+// MARK: - Ring Menu with PDF Background and 8 Buttons
+struct RingMenuView: View {
+    let isRecording: Bool
+    let onRecordTap: () -> Void
+    
+    private let buttonRadius: CGFloat = 112 // Decreased from 130 to bring icons closer
+    private let buttonSize: CGFloat = 44
     
     var body: some View {
         ZStack {
-            // Control buttons around the circle
-            ForEach(CameraAction.allCases, id: \.self) { action in
-                ControlButton(action: action) {
-                    handleControlAction(action)
-                }
+            // PDF Background for ring menu
+            Image(isRecording ? "90RecordButtonON" : "90RecordButtonOff")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 300, height: 300)
+            
+            // 8 control buttons positioned around the circle
+            ForEach(0..<8, id: \.self) { index in
+                ControlButtonView(
+                    sfSymbol: controlSymbols[index],
+                    size: buttonSize
+                )
                 .offset(
-                    x: cos(action.angle * .pi / 180) * UIConstants.controlCircleRadius,
-                    y: sin(action.angle * .pi / 180) * UIConstants.controlCircleRadius
+                    x: cos(Double(index) * .pi / 4 - .pi / 2) * buttonRadius,
+                    y: sin(Double(index) * .pi / 4 - .pi / 2) * buttonRadius
                 )
             }
             
-            // Central record button
-            RecordButton(
-                isRecording: viewModel.isRecording,
-                canRecord: viewModel.canRecord
-            ) {
-                toggleRecording()
+            // Invisible tappable area for record button (using PDF background)
+            Button(action: onRecordTap) {
+                Circle()
+                    .fill(Color.clear)  // Invisible
+                    .frame(width: 70, height: 70)  // Same size as original red button
             }
         }
     }
     
-    private func handleControlAction(_ action: CameraAction) {
-        switch action {
-        case .toggleCamera:
-            viewModel.toggleCamera()
-        case .toggleFlash:
-            // TODO: Implement flash toggle
-            break
-        case .showGallery:
-            // TODO: Implement gallery
-            break
-        case .showSettings:
-            // TODO: Implement settings
-            break
-        case .toggleMute:
-            // TODO: Implement mute toggle
-            break
-        case .share:
-            // TODO: Implement share
-            break
-        }
-    }
-    
-    private func toggleRecording() {
-        if viewModel.isRecording {
-            viewModel.stopRecording()
-        } else {
-            viewModel.startRecording()
-        }
+    private var controlSymbols: [String] {
+        [
+            "arrow.triangle.2.circlepath.camera",  // Camera flip (top)
+            "mic.slash",                           // Microphone (top right)
+            "video",                               // Video mode (right)
+            "stop.fill",                           // Stop (bottom right)
+            "photo.on.rectangle",                  // Gallery (bottom)
+            "square.and.arrow.up",                 // Share (bottom left)
+            "gearshape",                           // Settings (left)
+            "bolt.slash"                           // Flash (top left)
+        ]
     }
 }
 
 // MARK: - Control Button
-struct ControlButton: View {
-    let action: CameraAction
-    let onTap: () -> Void
+struct ControlButtonView: View {
+    let sfSymbol: String
+    let size: CGFloat
     
     var body: some View {
-        Button(action: onTap) {
-            Image(systemName: action.sfSymbol)
-                .font(.system(size: 20, weight: .medium))
-                .foregroundColor(.white)
-                .frame(width: UIConstants.controlButtonSize, height: UIConstants.controlButtonSize)
-                .background(
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
-                        .blur(radius: 0.5)
-                )
-        }
-    }
-}
-
-// MARK: - Record Button
-struct RecordButton: View {
-    let isRecording: Bool
-    let canRecord: Bool
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
+        Button(action: {
+            // Handle action
+        }) {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.2))
-                    .frame(width: UIConstants.recordButtonSize + 20, height: UIConstants.recordButtonSize + 20)
+                    .fill(Color.black.opacity(0.3))
+                    .frame(width: size, height: size)
                 
-                Circle()
-                    .fill(isRecording ? Color.red : Color.red.opacity(0.8))
-                    .frame(width: UIConstants.recordButtonSize, height: UIConstants.recordButtonSize)
-                    .scaleEffect(isRecording ? 0.8 : 1.0)
-                    .animation(.easeInOut(duration: 0.2), value: isRecording)
-                
-                if isRecording {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.white)
-                        .frame(width: 20, height: 20)
-                } else {
-                    Circle()
-                        .fill(Color.white)
-                        .frame(width: 8, height: 8)
-                }
+                Image(systemName: sfSymbol)
+                    .font(.system(size: size * 0.4, weight: .medium))
+                    .foregroundColor(.white)
             }
         }
-        .disabled(!canRecord && !isRecording)
     }
 }
 

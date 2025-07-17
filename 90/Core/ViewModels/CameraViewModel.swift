@@ -57,12 +57,28 @@ final class CameraViewModel: ObservableObject {
         recordingStartTime = nil
     }
     
+    func toggleRecording() {
+        if isRecording {
+            stopRecording()
+        } else {
+            startRecording()
+        }
+    }
+    
+    func flipCamera() {
+        cameraPosition = cameraPosition == .back ? .front : .back
+    }
+    
     func toggleCamera() {
         cameraPosition = cameraPosition == .back ? .front : .back
     }
     
     func toggleCropOverlay() {
         showsCropOverlay.toggle()
+    }
+    
+    func requestPermissions() {
+        checkPermissions()
     }
     
     // MARK: - Private Methods
