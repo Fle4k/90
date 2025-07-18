@@ -14,7 +14,10 @@ struct CameraView: View {
                     
                     Spacer()
                     // Full-width camera preview area (16:9)
-                    CameraPreviewArea(geometry: geometry)
+                    RealCameraPreviewArea(
+                        cameraManager: viewModel.cameraManager,
+                        geometry: geometry
+                    )
                     
                     // Timer and zoom controls directly below preview
                     HStack {
@@ -26,18 +29,36 @@ struct CameraView: View {
                         Spacer()
                         
                         // Zoom controls on right
-                        HStack(spacing: 60) {
-                            Button(action: {}) {
-                                Image(systemName: "minus")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
+                        HStack(spacing: 40) {
+                            Button(action: {
+                                viewModel.zoomOut()
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.black.opacity(0.4))
+                                        .frame(width: 50, height: 50)
+                                    
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
                             }
+                            .frame(width: 60, height: 60) // Larger tap area
                             
-                            Button(action: {}) {
-                                Image(systemName: "plus")
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(.white)
+                            Button(action: {
+                                viewModel.zoomIn()
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.black.opacity(0.4))
+                                        .frame(width: 50, height: 50)
+                                    
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 20, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
                             }
+                            .frame(width: 60, height: 60) // Larger tap area
                         }
                     }
                     .padding(.horizontal, 20)
@@ -51,9 +72,47 @@ struct CameraView: View {
                         isRecording: viewModel.isRecording,
                         onRecordTap: {
                             viewModel.toggleRecording()
-                        }
+                        },
+                        viewModel: viewModel
                     )
                     .padding(.bottom, 50)
+                }
+                
+                // Save status overlay
+                if viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil {
+                    VStack {
+                        Spacer()
+                        
+                        if viewModel.isSavingToLibrary {
+                            HStack {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(0.8)
+                                
+                                Text("Saving to camera roll...")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.black.opacity(0.7))
+                            .cornerRadius(20)
+                        } else if let status = viewModel.lastSaveStatus {
+                            Text(status)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.black.opacity(0.7))
+                                .cornerRadius(20)
+                        }
+                        
+                        Spacer()
+                            .frame(height: 120) // Space above controls
+                    }
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
                 }
             }
         }
@@ -64,8 +123,9 @@ struct CameraView: View {
     }
 }
 
-// MARK: - Camera Preview Area
-struct CameraPreviewArea: View {
+// MARK: - Real Camera Preview Area
+struct RealCameraPreviewArea: View {
+    let cameraManager: CameraManager
     let geometry: GeometryProxy
     
     private var previewHeight: CGFloat {
@@ -74,25 +134,15 @@ struct CameraPreviewArea: View {
     
     var body: some View {
         ZStack {
-            // Camera preview background - will be replaced with actual camera
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        gradient: Gradient(colors: [
-                            Color.blue.opacity(0.6),
-                            Color.teal.opacity(0.8),
-                            Color.green.opacity(0.4)
-                        ]),
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
+            // Real camera preview
+            CameraPreview(cameraManager: cameraManager)
                 .frame(width: geometry.size.width, height: previewHeight)
+                .clipped() // Crop to 16:9 ratio
             
-            // Landscape preview content (simulating your target image)
-            Image(systemName: "mountain.2.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.white.opacity(0.7))
+            // Optional: 16:9 crop indicator (subtle overlay)
+            Rectangle()
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                .frame(width: geometry.size.width, height: previewHeight)
         }
         .clipped()
     }
@@ -102,6 +152,7 @@ struct CameraPreviewArea: View {
 struct RingMenuView: View {
     let isRecording: Bool
     let onRecordTap: () -> Void
+    let viewModel: CameraViewModel
     
     private let buttonRadius: CGFloat = 112 // Decreased from 130 to bring icons closer
     private let buttonSize: CGFloat = 44
@@ -118,7 +169,8 @@ struct RingMenuView: View {
             ForEach(0..<8, id: \.self) { index in
                 ControlButtonView(
                     sfSymbol: controlSymbols[index],
-                    size: buttonSize
+                    size: buttonSize,
+                    action: getButtonAction(for: index)
                 )
                 .offset(
                     x: cos(Double(index) * .pi / 4 - .pi / 2) * buttonRadius,
@@ -138,14 +190,37 @@ struct RingMenuView: View {
     private var controlSymbols: [String] {
         [
             "arrow.triangle.2.circlepath.camera",  // Camera flip (top)
-            "bolt.slash",                           // Microphone (top right)
-            "photo",                               // Video mode (right)
-            "sun.max",                           // dim (bottom right)
+            viewModel.isFlashlightOn ? "bolt.fill" : "bolt.slash", // Flashlight toggle (top right)
+            viewModel.isScreenDimmed ? "sun.min.fill" : "sun.max", // Screen dimming toggle (right)
+            "ellipsis",                            // Three dots menu (bottom right)
             "photo.on.rectangle",                  // Gallery (bottom)
             "square.and.arrow.up",                 // Share (bottom left)
-            "film.stack",                           // Settings (left)
-            "speaker.slash"                           // Mute (top left)
+            "film.stack",                          // Settings (left)
+            viewModel.isAudioEnabled ? "speaker.wave.2" : "speaker.slash" // Audio toggle (top left)
         ]
+    }
+    
+    private func getButtonAction(for index: Int) -> () -> Void {
+        switch index {
+        case 0: // Camera flip
+            return { viewModel.flipCamera() }
+        case 1: // Flashlight toggle
+            return { viewModel.toggleFlashlight() }
+        case 2: // Screen dimming toggle
+            return { viewModel.toggleScreenDimming() }
+        case 3: // Three dots menu
+            return { /* TODO: Implement menu */ }
+        case 4: // Gallery
+            return { /* TODO: Implement gallery */ }
+        case 5: // Share
+            return { /* TODO: Implement share */ }
+        case 6: // Settings
+            return { /* TODO: Implement settings */ }
+        case 7: // Audio toggle
+            return { viewModel.toggleAudio() }
+        default:
+            return { }
+        }
     }
 }
 
@@ -153,11 +228,10 @@ struct RingMenuView: View {
 struct ControlButtonView: View {
     let sfSymbol: String
     let size: CGFloat
+    let action: () -> Void
     
     var body: some View {
-        Button(action: {
-            // Handle action
-        }) {
+        Button(action: action) {
             ZStack {
                 Circle()
                     .fill(Color.black.opacity(0.3))

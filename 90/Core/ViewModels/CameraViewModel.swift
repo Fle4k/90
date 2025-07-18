@@ -8,13 +8,28 @@ final class CameraViewModel: ObservableObject {
     @Published var isRecording = false
     @Published var recordingDuration: TimeInterval = 0
     @Published var showsCropOverlay = true
-    @Published var cameraPosition: AVCaptureDevice.Position = .back
     @Published var hasRecordingPermission = false
     @Published var previewImage: UIImage?
+    @Published var errorMessage: String?
+    @Published var zoomLevel: CGFloat = 1.0
+    
+    // MARK: - New Toggle States
+    @Published var isAudioEnabled = true
+    @Published var isFlashlightOn = false
+    @Published var isScreenDimmed = false
+    
+    // MARK: - Photo Library Integration
+    @Published var hasPhotoLibraryPermission = false
+    @Published var isSavingToLibrary = false
+    @Published var lastSaveStatus: String?
+    
+    // MARK: - Camera Manager
+    @Published var cameraManager = CameraManager()
     
     // MARK: - Private Properties
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Computed Properties
     var formattedDuration: String {
@@ -24,88 +39,172 @@ final class CameraViewModel: ObservableObject {
         return String(format: "%02d:%02d:%02d", minutes, seconds, centiseconds)
     }
     
-    var canRecord: Bool {
-        hasRecordingPermission && !isRecording
-    }
-    
-    // MARK: - Initialization
+    // MARK: - Initializer
     init() {
-        checkPermissions()
+        setupBindings()
+        requestPermissions()
     }
     
-    // MARK: - Public Methods
-    func startRecording() {
-        guard canRecord else { return }
+    // MARK: - Setup
+    private func setupBindings() {
+        // Bind camera manager properties
+        cameraManager.$isRecording
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isRecording in
+                self?.handleRecordingStateChange(isRecording)
+            }
+            .store(in: &cancellables)
         
-        isRecording = true
+        cameraManager.$hasPermission
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.hasRecordingPermission, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$errorMessage
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.errorMessage, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$zoomLevel
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.zoomLevel, on: self)
+            .store(in: &cancellables)
+        
+        // Bind new toggle states
+        cameraManager.$isAudioEnabled
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isAudioEnabled, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$isFlashlightOn
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isFlashlightOn, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$isScreenDimmed
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isScreenDimmed, on: self)
+            .store(in: &cancellables)
+        
+        // Bind photo library states
+        cameraManager.$hasPhotoLibraryPermission
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.hasPhotoLibraryPermission, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$isSavingToLibrary
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isSavingToLibrary, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$lastSaveStatus
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.lastSaveStatus, on: self)
+            .store(in: &cancellables)
+    }
+    
+    private func handleRecordingStateChange(_ isRecording: Bool) {
+        self.isRecording = isRecording
+        
+        if isRecording {
+            startTimer()
+        } else {
+            stopTimer()
+        }
+    }
+    
+    // MARK: - Timer Management
+    private func startTimer() {
         recordingStartTime = Date()
         recordingDuration = 0
         
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.updateRecordingDuration()
+            guard let self = self, let startTime = self.recordingStartTime else { return }
+            
+            DispatchQueue.main.async {
+                self.recordingDuration = Date().timeIntervalSince(startTime)
             }
         }
     }
     
-    func stopRecording() {
-        guard isRecording else { return }
-        
-        isRecording = false
+    private func stopTimer() {
         recordingTimer?.invalidate()
         recordingTimer = nil
         recordingStartTime = nil
     }
     
+    // MARK: - Permission Methods
+    func requestPermissions() {
+        cameraManager.checkPermissions()
+        cameraManager.checkPhotoLibraryPermission()
+    }
+    
+    private func checkPermissions() {
+        hasRecordingPermission = cameraManager.hasPermission
+    }
+    
+    // MARK: - Recording Controls
     func toggleRecording() {
         if isRecording {
-            stopRecording()
+            cameraManager.stopRecording()
         } else {
-            startRecording()
+            cameraManager.startRecording()
         }
     }
     
+    private func startRecording() {
+        cameraManager.startRecording()
+    }
+    
+    private func stopRecording() {
+        cameraManager.stopRecording()
+    }
+    
+    // MARK: - Camera Controls
     func flipCamera() {
-        cameraPosition = cameraPosition == .back ? .front : .back
+        cameraManager.flipCamera()
     }
     
     func toggleCamera() {
-        cameraPosition = cameraPosition == .back ? .front : .back
+        cameraManager.flipCamera()
     }
     
+    func zoomIn() {
+        cameraManager.zoomIn()
+    }
+    
+    func zoomOut() {
+        cameraManager.zoomOut()
+    }
+    
+    func setZoom(level: CGFloat) {
+        cameraManager.setZoom(level: level)
+    }
+    
+    // MARK: - New Toggle Controls
+    func toggleAudio() {
+        cameraManager.toggleAudio()
+    }
+    
+    func toggleFlashlight() {
+        cameraManager.toggleFlashlight()
+    }
+    
+    func toggleScreenDimming() {
+        cameraManager.toggleScreenDimming()
+    }
+    
+    // MARK: - UI Controls
     func toggleCropOverlay() {
         showsCropOverlay.toggle()
     }
     
-    func requestPermissions() {
-        checkPermissions()
+    // MARK: - Session Control
+    func startCameraSession() {
+        cameraManager.startSession()
     }
     
-    // MARK: - Private Methods
-    private func updateRecordingDuration() {
-        guard let startTime = recordingStartTime else { return }
-        recordingDuration = Date().timeIntervalSince(startTime)
-    }
-    
-    private func checkPermissions() {
-        Task {
-            let hasPermission = await requestCameraPermission()
-            await MainActor.run {
-                self.hasRecordingPermission = hasPermission
-            }
-        }
-    }
-    
-    private func requestCameraPermission() async -> Bool {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized:
-            return true
-        case .notDetermined:
-            return await AVCaptureDevice.requestAccess(for: .video)
-        case .denied, .restricted:
-            return false
-        @unknown default:
-            return false
-        }
+    func stopCameraSession() {
+        cameraManager.stopSession()
     }
 } 
