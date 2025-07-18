@@ -26,7 +26,7 @@ struct CameraView: View {
                         Spacer()
                         
                         // Zoom controls on right
-                        HStack(spacing: 20) {
+                        HStack(spacing: 60) {
                             Button(action: {}) {
                                 Image(systemName: "minus")
                                     .font(.system(size: 16, weight: .medium))
@@ -138,13 +138,13 @@ struct RingMenuView: View {
     private var controlSymbols: [String] {
         [
             "arrow.triangle.2.circlepath.camera",  // Camera flip (top)
-            "mic.slash",                           // Microphone (top right)
-            "video",                               // Video mode (right)
-            "stop.fill",                           // Stop (bottom right)
+            "bolt.slash",                           // Microphone (top right)
+            "photo",                               // Video mode (right)
+            "sun.max",                           // dim (bottom right)
             "photo.on.rectangle",                  // Gallery (bottom)
             "square.and.arrow.up",                 // Share (bottom left)
-            "gearshape",                           // Settings (left)
-            "bolt.slash"                           // Flash (top left)
+            "film.stack",                           // Settings (left)
+            "speaker.slash"                           // Mute (top left)
         ]
     }
 }
