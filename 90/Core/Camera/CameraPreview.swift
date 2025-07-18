@@ -1,23 +1,25 @@
 import SwiftUI
 import AVFoundation
 import UIKit
+import Combine
 
 struct CameraPreview: UIViewRepresentable {
     let cameraManager: CameraManager
     
     func makeUIView(context: Context) -> CameraPreviewView {
         let previewView = CameraPreviewView()
-        previewView.setupPreview(with: cameraManager.getPreviewLayer())
+        previewView.setupPreview(with: cameraManager)
         return previewView
     }
     
     func updateUIView(_ uiView: CameraPreviewView, context: Context) {
-        // Update if needed
+        // Ensure session is connected when view updates
+        uiView.updateSession(with: cameraManager)
     }
 }
 
 final class CameraPreviewView: UIView {
-    private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var cancellables = Set<AnyCancellable>()
     
     override class var layerClass: AnyClass {
         return AVCaptureVideoPreviewLayer.self
@@ -27,22 +29,36 @@ final class CameraPreviewView: UIView {
         return layer as! AVCaptureVideoPreviewLayer
     }
     
-    func setupPreview(with previewLayer: AVCaptureVideoPreviewLayer) {
-        self.previewLayer = previewLayer
-        
+    func setupPreview(with cameraManager: CameraManager) {
         // Configure the preview layer
-        previewLayer.frame = bounds
-        previewLayer.videoGravity = .resizeAspectFill
+        videoPreviewLayer.videoGravity = .resizeAspectFill
         
-        // Add to view
-        layer.addSublayer(previewLayer)
+        // Initial session assignment
+        updateSession(with: cameraManager)
         
-        // Setup constraints
-        previewLayer.frame = bounds
+        // Observe session running state and update preview accordingly
+        cameraManager.$isSessionRunning
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isRunning in
+                if isRunning && self?.videoPreviewLayer.session == nil {
+                    self?.videoPreviewLayer.session = cameraManager.captureSession
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    func updateSession(with cameraManager: CameraManager) {
+        if videoPreviewLayer.session !== cameraManager.captureSession {
+            videoPreviewLayer.session = cameraManager.captureSession
+        }
     }
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        previewLayer?.frame = bounds
+        videoPreviewLayer.frame = bounds
+    }
+    
+    deinit {
+        cancellables.removeAll()
     }
 } 

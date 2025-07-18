@@ -23,6 +23,11 @@ final class CameraViewModel: ObservableObject {
     @Published var isSavingToLibrary = false
     @Published var lastSaveStatus: String?
     
+    // MARK: - Video Processing
+    @Published var isProcessingVideo = false
+    @Published var processingProgress: Float = 0.0
+    @Published var processingStatus: String?
+    
     // MARK: - Camera Manager
     @Published var cameraManager = CameraManager()
     
@@ -101,6 +106,22 @@ final class CameraViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.lastSaveStatus, on: self)
             .store(in: &cancellables)
+        
+        // Bind video processing states
+        cameraManager.$isProcessingVideo
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isProcessingVideo, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$processingProgress
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.processingProgress, on: self)
+            .store(in: &cancellables)
+        
+        cameraManager.$processingStatus
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.processingStatus, on: self)
+            .store(in: &cancellables)
     }
     
     private func handleRecordingStateChange(_ isRecording: Bool) {
@@ -119,9 +140,10 @@ final class CameraViewModel: ObservableObject {
         recordingDuration = 0
         
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.01, repeats: true) { [weak self] _ in
-            guard let self = self, let startTime = self.recordingStartTime else { return }
+            guard let self = self else { return }
             
-            DispatchQueue.main.async {
+            Task { @MainActor in
+                guard let startTime = self.recordingStartTime else { return }
                 self.recordingDuration = Date().timeIntervalSince(startTime)
             }
         }

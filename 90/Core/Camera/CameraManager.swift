@@ -18,17 +18,21 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var isSavingToLibrary = false
     @Published var lastSaveStatus: String?
     
+    // MARK: - Video Processing
+    @Published var isProcessingVideo = false
+    @Published var processingProgress: Float = 0.0
+    @Published var processingStatus: String?
+    
     // MARK: - New Toggle States
     @Published var isAudioEnabled = true
     @Published var isFlashlightOn = false
     @Published var isScreenDimmed = false
     
     // MARK: - Private Properties
-    private let captureSession = AVCaptureSession()
+    let captureSession = AVCaptureSession()
     private var videoDeviceInput: AVCaptureDeviceInput?
     private var audioDeviceInput: AVCaptureDeviceInput?
     private var movieFileOutput: AVCaptureMovieFileOutput?
-    private var previewLayer: AVCaptureVideoPreviewLayer?
     
     private let sessionQueue = DispatchQueue(label: "camera.session.queue")
     private var currentDevice: AVCaptureDevice? {
@@ -327,6 +331,155 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Video Processing
+    func processVideo(_ inputURL: URL) {
+        DispatchQueue.main.async {
+            self.isProcessingVideo = true
+            self.processingProgress = 0.0
+            self.processingStatus = "Processing video..."
+        }
+        
+        // Create output URL for processed video
+        let outputURL = getProcessedVideoURL()
+        
+        // Create asset from input video
+        let asset = AVURLAsset(url: inputURL)
+        
+        Task {
+            do {
+                // Use modern async APIs instead of deprecated ones
+                let videoTracks = try await asset.loadTracks(withMediaType: .video)
+                let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+                
+                guard let videoTrack = videoTracks.first,
+                      let audioTrack = audioTracks.first else {
+                    await MainActor.run {
+                        self.errorMessage = "Unable to load video tracks"
+                        self.isProcessingVideo = false
+                    }
+                    return
+                }
+                
+                // Create composition
+                let composition = AVMutableComposition()
+                
+                guard let videoCompositionTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+                      let audioCompositionTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+                    await MainActor.run {
+                        self.errorMessage = "Unable to create composition tracks"
+                        self.isProcessingVideo = false
+                    }
+                    return
+                }
+                
+                // Load properties asynchronously
+                let duration = try await asset.load(.duration)
+                let timeRange = CMTimeRange(start: .zero, duration: duration)
+                
+                // Insert tracks
+                try videoCompositionTrack.insertTimeRange(timeRange, of: videoTrack, at: .zero)
+                try audioCompositionTrack.insertTimeRange(timeRange, of: audioTrack, at: .zero)
+                
+                await MainActor.run {
+                    self.processingProgress = 0.3
+                    self.processingStatus = "Creating video composition..."
+                }
+                
+                // Load video properties
+                let videoSize = try await videoTrack.load(.naturalSize)
+                let transform = try await videoTrack.load(.preferredTransform)
+                
+                // For vertical video, extract 16:9 horizontal slice from center
+                let targetAspectRatio: CGFloat = 16.0 / 9.0
+                
+                // Calculate dimensions for 16:9 horizontal slice from vertical video
+                let cropWidth = videoSize.width // Use full width of vertical video
+                let cropHeight = videoSize.width / targetAspectRatio // Calculate height for 16:9 ratio
+                
+                // Center the crop vertically (take from middle of vertical video)
+                let cropX: CGFloat = 0
+                let cropY = (videoSize.height - cropHeight) / 2
+                
+                // Final output size (landscape 16:9)
+                let outputWidth: CGFloat = 1920 // HD width  
+                let outputHeight: CGFloat = 1080 // HD height
+                
+                // Create video composition
+                let videoComposition = AVMutableVideoComposition()
+                videoComposition.frameDuration = CMTimeMake(value: 1, timescale: 30)
+                videoComposition.renderSize = CGSize(width: outputWidth, height: outputHeight)
+                
+                // Create instruction for the video track
+                let instruction = AVMutableVideoCompositionInstruction()
+                instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
+                
+                let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoCompositionTrack)
+                
+                // Create crop and rotation transform
+                var combinedTransform = CGAffineTransform.identity
+                
+                // Apply cropping transform
+                let scaleX = outputWidth / cropWidth
+                let scaleY = outputHeight / cropHeight
+                let scale = max(scaleX, scaleY)
+                
+                combinedTransform = combinedTransform.scaledBy(x: scale, y: scale)
+                combinedTransform = combinedTransform.translatedBy(x: -cropX * scale, y: -cropY * scale)
+                
+                // Apply 90-degree clockwise rotation for landscape output
+                combinedTransform = combinedTransform.rotated(by: .pi / 2)
+                combinedTransform = combinedTransform.translatedBy(x: 0, y: -outputWidth)
+                
+                layerInstruction.setTransform(combinedTransform, at: .zero)
+                instruction.layerInstructions = [layerInstruction]
+                videoComposition.instructions = [instruction]
+                
+                await MainActor.run {
+                    self.processingProgress = 0.6
+                    self.processingStatus = "Exporting video..."
+                }
+                
+                // Export using modern async API
+                guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
+                    await MainActor.run {
+                        self.errorMessage = "Unable to create export session"
+                        self.isProcessingVideo = false
+                    }
+                    return
+                }
+                
+                exportSession.outputURL = outputURL
+                exportSession.outputFileType = .mov
+                exportSession.videoComposition = videoComposition
+                
+                // Use modern async export
+                try await exportSession.export()
+                
+                await MainActor.run {
+                    self.processingProgress = 1.0
+                    self.processingStatus = "Processing complete!"
+                    self.isProcessingVideo = false
+                    
+                    // Save the processed video to photo library
+                    self.saveVideoToLibrary(outputURL)
+                }
+                
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "Video processing failed: \(error.localizedDescription)"
+                    self.isProcessingVideo = false
+                    self.processingProgress = 0.0
+                }
+            }
+        }
+    }
+    
+    private func getProcessedVideoURL() -> URL {
+        let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileName = "processed_video_\(Date().timeIntervalSince1970).mov"
+        return documentsDirectory.appendingPathComponent(fileName)
+    }
+    
     // MARK: - Photo Library Integration
     func checkPhotoLibraryPermission() {
         let status = PHPhotoLibrary.authorizationStatus(for: .addOnly)
@@ -450,16 +603,7 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     // MARK: - Preview Layer
-    func getPreviewLayer() -> AVCaptureVideoPreviewLayer {
-        if let existingLayer = previewLayer {
-            return existingLayer
-        }
-        
-        let layer = AVCaptureVideoPreviewLayer(session: captureSession)
-        layer.videoGravity = .resizeAspectFill
-        self.previewLayer = layer
-        return layer
-    }
+    // Preview layer is now handled directly in CameraPreview.swift
     
     // MARK: - Session Control
     func startSession() {
@@ -491,19 +635,19 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
         // Recording started successfully
     }
     
-    func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
+    nonisolated func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
         if let error = error {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.errorMessage = "Recording failed: \(error.localizedDescription)"
                 self.isRecording = false
             }
         } else {
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self.recordedVideoURL = outputFileURL
                 self.isRecording = false
                 
-                // Automatically save to photo library
-                self.saveVideoToLibrary(outputFileURL)
+                // Process video (crop and rotate) before saving to photo library
+                self.processVideo(outputFileURL)
             }
         }
     }

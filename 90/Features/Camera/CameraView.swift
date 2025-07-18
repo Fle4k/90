@@ -78,12 +78,47 @@ struct CameraView: View {
                     .padding(.bottom, 50)
                 }
                 
-                // Save status overlay
-                if viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil {
+                // Status overlays moved to TOP of screen
+                if viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil {
                     VStack {
-                        Spacer()
-                        
-                        if viewModel.isSavingToLibrary {
+                        // Status at the top
+                        if viewModel.isProcessingVideo {
+                            VStack(spacing: 12) {
+                                HStack {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(viewModel.processingStatus ?? "Processing video...")
+                                            .font(.system(size: 14, weight: .medium))
+                                            .foregroundColor(.white)
+                                        
+                                        // Progress bar
+                                        HStack {
+                                            Rectangle()
+                                                .fill(Color.white)
+                                                .frame(width: CGFloat(viewModel.processingProgress) * 120, height: 3)
+                                                .animation(.easeInOut(duration: 0.3), value: viewModel.processingProgress)
+                                        
+                                            Rectangle()
+                                                .fill(Color.white.opacity(0.3))
+                                                .frame(height: 3)
+                                        }
+                                        .frame(width: 120, height: 3)
+                                        .clipShape(Capsule())
+                                        
+                                        Text("\(Int(viewModel.processingProgress * 100))%")
+                                            .font(.system(size: 12, weight: .regular))
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(Color.black.opacity(0.8))
+                            .cornerRadius(24)
+                        } else if viewModel.isSavingToLibrary {
                             HStack {
                                 ProgressView()
                                     .progressViewStyle(CircularProgressViewStyle(tint: .white))
@@ -107,10 +142,11 @@ struct CameraView: View {
                                 .cornerRadius(20)
                         }
                         
-                        Spacer()
-                            .frame(height: 120) // Space above controls
+                        Spacer() // Push content to top
                     }
+                    .padding(.top, 60) // Safe area padding
                     .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isProcessingVideo)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
                 }
@@ -119,6 +155,7 @@ struct CameraView: View {
         .preferredColorScheme(.dark)
         .onAppear {
             viewModel.requestPermissions()
+            viewModel.startCameraSession()
         }
     }
 }
