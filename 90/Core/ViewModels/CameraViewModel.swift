@@ -11,7 +11,11 @@ final class CameraViewModel: ObservableObject {
     @Published var hasRecordingPermission = false
     @Published var previewImage: UIImage?
     @Published var errorMessage: String?
-    @Published var zoomLevel: CGFloat = 1.0
+    @Published var currentLensDisplayName: String = "1x"
+    @Published var canSwitchToNext: Bool = false
+    @Published var canSwitchToPrevious: Bool = false
+    @Published var availableLenses: [AVCaptureDevice.DeviceType] = []
+    @Published var currentLensType: AVCaptureDevice.DeviceType = .builtInWideAngleCamera
     
     // MARK: - New Toggle States
     @Published var isAudioEnabled = true
@@ -70,9 +74,24 @@ final class CameraViewModel: ObservableObject {
             .assign(to: \.errorMessage, on: self)
             .store(in: &cancellables)
         
-        cameraManager.$zoomLevel
+        cameraManager.$currentLensType
             .receive(on: DispatchQueue.main)
-            .assign(to: \.zoomLevel, on: self)
+            .sink { [weak self] _ in
+                self?.updateLensUI()
+            }
+            .store(in: &cancellables)
+        
+        cameraManager.$availableLenses
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] availableLenses in
+                self?.availableLenses = availableLenses
+                self?.updateLensUI()
+            }
+            .store(in: &cancellables)
+        
+        cameraManager.$currentLensType
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.currentLensType, on: self)
             .store(in: &cancellables)
         
         // Bind new toggle states
@@ -122,6 +141,11 @@ final class CameraViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.processingStatus, on: self)
             .store(in: &cancellables)
+        
+        // Initial lens UI setup after camera initialization
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.updateLensUI()
+        }
     }
     
     private func handleRecordingStateChange(_ isRecording: Bool) {
@@ -191,16 +215,22 @@ final class CameraViewModel: ObservableObject {
         cameraManager.flipCamera()
     }
     
-    func zoomIn() {
-        cameraManager.zoomIn()
+    func switchToNextLens() {
+        cameraManager.switchToNextLens()
     }
     
-    func zoomOut() {
-        cameraManager.zoomOut()
+    func switchToPreviousLens() {
+        cameraManager.switchToPreviousLens()
     }
     
-    func setZoom(level: CGFloat) {
-        cameraManager.setZoom(level: level)
+    func switchToLens(_ lensType: AVCaptureDevice.DeviceType) {
+        cameraManager.switchToSpecificLens(lensType)
+    }
+    
+    private func updateLensUI() {
+        currentLensDisplayName = cameraManager.getCurrentLensDisplayName()
+        canSwitchToNext = cameraManager.canSwitchToNextLens()
+        canSwitchToPrevious = cameraManager.canSwitchToPreviousLens()
     }
     
     // MARK: - New Toggle Controls

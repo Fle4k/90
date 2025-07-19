@@ -1,4 +1,5 @@
 import SwiftUI
+import AVFoundation
 
 struct CameraView: View {
     @StateObject private var viewModel = CameraViewModel()
@@ -13,13 +14,14 @@ struct CameraView: View {
                 VStack(spacing: 0) {
                     
                     Spacer()
-                    // Full-width camera preview area (16:9)
+                    // 16:9 camera preview area (cropped view)
                     RealCameraPreviewArea(
                         cameraManager: viewModel.cameraManager,
-                        geometry: geometry
+                        geometry: geometry,
+                        isRecording: viewModel.isRecording
                     )
                     
-                    // Timer and zoom controls directly below preview
+                    // Timer and lens controls directly below preview
                     HStack {
                         // Timer on left
                         Text(viewModel.formattedDuration)
@@ -28,38 +30,8 @@ struct CameraView: View {
                         
                         Spacer()
                         
-                        // Zoom controls on right
-                        HStack(spacing: 40) {
-                            Button(action: {
-                                viewModel.zoomOut()
-                            }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.black.opacity(0.4))
-                                        .frame(width: 50, height: 50)
-                                    
-                                    Image(systemName: "minus")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .frame(width: 60, height: 60) // Larger tap area
-                            
-                            Button(action: {
-                                viewModel.zoomIn()
-                            }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.black.opacity(0.4))
-                                        .frame(width: 50, height: 50)
-                                    
-                                    Image(systemName: "plus")
-                                        .font(.system(size: 20, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .frame(width: 60, height: 60) // Larger tap area
-                        }
+                        // Lens selection buttons like native Camera app
+                        LensSelectionView(viewModel: viewModel)
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
@@ -164,22 +136,36 @@ struct CameraView: View {
 struct RealCameraPreviewArea: View {
     let cameraManager: CameraManager
     let geometry: GeometryProxy
+    let isRecording: Bool
     
-    private var previewHeight: CGFloat {
-        geometry.size.width / (16/9) // 16:9 aspect ratio
+    // 16:9 crop area dimensions - only show this area
+    private var cropWidth: CGFloat {
+        geometry.size.width
+    }
+    
+    private var cropHeight: CGFloat {
+        cropWidth / (16/9) // 16:9 aspect ratio
     }
     
     var body: some View {
         ZStack {
             // Black background
             Color.black
-                .frame(width: geometry.size.width, height: previewHeight)
+                .frame(width: cropWidth, height: cropHeight)
             
-            // Camera preview showing only the 16:9 crop area
+            // Camera preview - cropped to show only 16:9 area
             CameraPreview(cameraManager: cameraManager)
-                .frame(width: geometry.size.width, height: previewHeight)
+                .frame(width: cropWidth, height: cropHeight)
                 .clipped()
+            
+            // Recording border - white normally, red when recording
+            Rectangle()
+                .stroke(isRecording ? Color.red : Color.white.opacity(0.3), lineWidth: isRecording ? 3 : 1)
+                .frame(width: cropWidth, height: cropHeight)
+                .animation(.easeInOut(duration: 0.2), value: isRecording)
         }
+        .frame(width: cropWidth, height: cropHeight)
+        .clipped()
     }
 }
 
@@ -194,45 +180,59 @@ struct RingMenuView: View {
     
     var body: some View {
         ZStack {
-            // PDF Background for ring menu
-            Image(isRecording ? "90RecordButtonON" : "90RecordButtonOff")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 300, height: 300)
-            
-            // 8 control buttons positioned around the circle
-            ForEach(0..<8, id: \.self) { index in
-                ControlButtonView(
-                    sfSymbol: controlSymbols[index],
-                    size: buttonSize,
-                    action: getButtonAction(for: index)
-                )
-                .offset(
-                    x: cos(Double(index) * .pi / 4 - .pi / 2) * buttonRadius,
-                    y: sin(Double(index) * .pi / 4 - .pi / 2) * buttonRadius
-                )
-            }
-            
-            // Invisible tappable area for record button (using PDF background)
-            Button(action: onRecordTap) {
-                Circle()
-                    .fill(Color.clear)  // Invisible
-                    .frame(width: 70, height: 70)  // Same size as original red button
-            }
+            backgroundImage
+            buttonCircle
+            recordButton
         }
     }
     
+    private var backgroundImage: some View {
+        Image(isRecording ? "90RecordButtonON" : "90RecordButtonOff")
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 300, height: 300)
+    }
+    
+    private var buttonCircle: some View {
+        ForEach(0..<8, id: \.self) { index in
+            createControlButton(at: index)
+        }
+    }
+    
+    private var recordButton: some View {
+        Button(action: onRecordTap) {
+            Circle()
+                .fill(Color.clear)
+                .frame(width: 70, height: 70)
+        }
+    }
+    
+    private func createControlButton(at index: Int) -> some View {
+        let symbol = controlSymbols[index]
+        let action = getButtonAction(for: index)
+        let angle = Double(index) * .pi / 4 - .pi / 2
+        let xPos = cos(angle) * buttonRadius
+        let yPos = sin(angle) * buttonRadius
+        
+        return ControlButtonView(
+            sfSymbol: symbol,
+            size: buttonSize,
+            action: action
+        )
+        .offset(x: xPos, y: yPos)
+    }
+    
     private var controlSymbols: [String] {
-        [
-            "arrow.triangle.2.circlepath.camera",  // Camera flip (top)
-            viewModel.isFlashlightOn ? "bolt.fill" : "bolt.slash", // Flashlight toggle (top right)
-            viewModel.isScreenDimmed ? "sun.min.fill" : "sun.max", // Screen dimming toggle (right)
-            "ellipsis",                            // Three dots menu (bottom right)
-            "photo.on.rectangle",                  // Gallery (bottom)
-            "square.and.arrow.up",                 // Share (bottom left)
-            "film.stack",                          // Settings (left)
-            viewModel.isAudioEnabled ? "speaker.wave.2" : "speaker.slash" // Audio toggle (top left)
-        ]
+        var symbols = [String]()
+        symbols.append("arrow.triangle.2.circlepath.camera")  // Camera flip (top)
+        symbols.append(viewModel.isFlashlightOn ? "bolt.fill" : "bolt.slash") // Flashlight toggle (top right)
+        symbols.append(viewModel.isScreenDimmed ? "sun.min.fill" : "sun.max") // Screen dimming toggle (right)
+        symbols.append("ellipsis")                            // Three dots menu (bottom right)
+        symbols.append("photo.on.rectangle")                  // Gallery (bottom)
+        symbols.append("square.and.arrow.up")                 // Share (bottom left)
+        symbols.append("film.stack")                          // Settings (left)
+        symbols.append(viewModel.isAudioEnabled ? "speaker.wave.2" : "speaker.slash") // Audio toggle (top left)
+        return symbols
     }
     
     private func getButtonAction(for index: Int) -> () -> Void {
@@ -277,6 +277,70 @@ struct ControlButtonView: View {
                     .foregroundColor(.white)
             }
         }
+    }
+}
+
+// MARK: - Lens Selection View
+struct LensSelectionView: View {
+    @ObservedObject var viewModel: CameraViewModel
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(viewModel.availableLenses, id: \.self) { lensType in
+                LensButton(
+                    lensType: lensType,
+                    isSelected: viewModel.currentLensType == lensType,
+                    onTap: {
+                        viewModel.switchToLens(lensType)
+                    }
+                )
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color.black.opacity(0.3))
+        )
+    }
+}
+
+// MARK: - Individual Lens Button
+struct LensButton: View {
+    let lensType: AVCaptureDevice.DeviceType
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    private var displayText: String {
+        switch lensType {
+        case .builtInUltraWideCamera:
+            return "0,5"
+        case .builtInWideAngleCamera:
+            return "1×"
+        case .builtInTelephotoCamera:
+            return "2"
+        default:
+            return "1×"
+        }
+    }
+    
+    var body: some View {
+        Button(action: onTap) {
+            Text(displayText)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(isSelected ? .black : .white)
+                .frame(width: 44, height: 44)
+                .background(
+                    Circle()
+                        .fill(isSelected ? Color.yellow : Color.clear)
+                        .overlay(
+                            Circle()
+                                .stroke(isSelected ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
+                        )
+                )
+        }
+        .scaleEffect(isSelected ? 1.1 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
 

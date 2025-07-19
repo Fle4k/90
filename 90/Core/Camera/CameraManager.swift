@@ -9,7 +9,8 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var isSessionRunning = false
     @Published var hasPermission = false
     @Published var cameraPosition: AVCaptureDevice.Position = .back
-    @Published var zoomLevel: CGFloat = 1.0
+    @Published var currentLensType: AVCaptureDevice.DeviceType = .builtInWideAngleCamera
+    @Published var availableLenses: [AVCaptureDevice.DeviceType] = []
     @Published var recordedVideoURL: URL?
     @Published var errorMessage: String?
     
@@ -39,14 +40,8 @@ final class CameraManager: NSObject, ObservableObject {
         videoDeviceInput?.device
     }
     
-    // MARK: - Optimization Properties
-    private var zoomTimer: Timer?
-    private var pendingZoomLevel: CGFloat?
+    // MARK: - Lens Properties
     private var originalScreenBrightness: CGFloat = 1.0
-    
-    // MARK: - Constants
-    private let maxZoomLevel: CGFloat = 10.0
-    private let minZoomLevel: CGFloat = 1.0
     
     override init() {
         super.init()
@@ -138,7 +133,26 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     private func setupVideoInput(for position: AVCaptureDevice.Position) {
-        guard let videoDevice = getCamera(for: position) else {
+        // Discover available lenses for this position synchronously
+        let availableTypes = discoverAvailableLensesSync(for: position)
+        
+        // Update properties on main thread
+        DispatchQueue.main.async {
+            self.availableLenses = availableTypes
+            
+            // Set default to wide angle if available, otherwise use first available
+            if availableTypes.contains(.builtInWideAngleCamera) {
+                self.currentLensType = .builtInWideAngleCamera
+            } else if let firstLens = availableTypes.first {
+                self.currentLensType = firstLens
+            }
+        }
+        
+        // Use the discovered lens type for camera setup
+        let targetLensType = availableTypes.contains(.builtInWideAngleCamera) ? 
+            .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera)
+        
+        guard let videoDevice = getCamera(for: position, deviceType: targetLensType) else {
             DispatchQueue.main.async {
                 self.errorMessage = "Unable to access camera"
             }
@@ -156,6 +170,113 @@ final class CameraManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.errorMessage = "Unable to create video input: \(error.localizedDescription)"
             }
+        }
+    }
+    
+    private func discoverAvailableLensesSync(for position: AVCaptureDevice.Position) -> [AVCaptureDevice.DeviceType] {
+        // Extended device types including multi-camera systems
+        let deviceTypes: [AVCaptureDevice.DeviceType] = [
+            .builtInUltraWideCamera,    // 0.5x
+            .builtInWideAngleCamera,    // 1x (default)
+            .builtInTelephotoCamera,    // 2x+
+            .builtInTripleCamera,       // iPhone 15 Pro/Pro Max
+            .builtInDualCamera,         // iPhone Plus models
+            .builtInDualWideCamera      // iPhone 11/12/13/14/15 models
+        ]
+        
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: deviceTypes,
+            mediaType: .video,
+            position: position
+        )
+        
+        var availableTypes: [AVCaptureDevice.DeviceType] = []
+        
+        print("📷 Checking available devices for position \(position):")
+        for device in discoverySession.devices {
+            print("  - \(device.deviceType.rawValue): \(device.localizedName)")
+            
+            // For multi-camera devices, we need to check individual lens availability
+            if device.deviceType == .builtInTripleCamera ||
+               device.deviceType == .builtInDualCamera ||
+               device.deviceType == .builtInDualWideCamera {
+                
+                // Check for ultra-wide separately
+                let ultraWideDiscovery = AVCaptureDevice.DiscoverySession(
+                    deviceTypes: [.builtInUltraWideCamera],
+                    mediaType: .video,
+                    position: position
+                )
+                if !ultraWideDiscovery.devices.isEmpty {
+                    availableTypes.append(.builtInUltraWideCamera)
+                    print("    ✓ Ultra-wide (0.5x) available")
+                }
+                
+                // Wide angle is always available
+                availableTypes.append(.builtInWideAngleCamera)
+                print("    ✓ Wide-angle (1x) available")
+                
+                // Check for telephoto separately
+                let telephotoDiscovery = AVCaptureDevice.DiscoverySession(
+                    deviceTypes: [.builtInTelephotoCamera],
+                    mediaType: .video,
+                    position: position
+                )
+                if !telephotoDiscovery.devices.isEmpty {
+                    availableTypes.append(.builtInTelephotoCamera)
+                    print("    ✓ Telephoto (2x) available")
+                }
+            } else {
+                // Single camera device - add directly
+                if !availableTypes.contains(device.deviceType) {
+                    availableTypes.append(device.deviceType)
+                }
+            }
+        }
+        
+        // Remove duplicates and sort in expected order
+        let uniqueTypes = Array(Set(availableTypes))
+        let sortedTypes = uniqueTypes.sorted { lhs, rhs in
+            let order: [AVCaptureDevice.DeviceType] = [
+                .builtInUltraWideCamera,
+                .builtInWideAngleCamera,
+                .builtInTelephotoCamera
+            ]
+            let lhsIndex = order.firstIndex(of: lhs) ?? 999
+            let rhsIndex = order.firstIndex(of: rhs) ?? 999
+            return lhsIndex < rhsIndex
+        }
+        
+        print("📷 Final available lenses: \(sortedTypes.map { deviceTypeToDisplayName($0) })")
+        
+        return sortedTypes
+    }
+    
+    private func discoverAvailableLenses(for position: AVCaptureDevice.Position) {
+        let availableTypes = discoverAvailableLensesSync(for: position)
+        
+        DispatchQueue.main.async {
+            self.availableLenses = availableTypes
+            
+            // Set default to wide angle if available
+            if availableTypes.contains(.builtInWideAngleCamera) {
+                self.currentLensType = .builtInWideAngleCamera
+            } else if let firstLens = availableTypes.first {
+                self.currentLensType = firstLens
+            }
+        }
+    }
+    
+    private func deviceTypeToDisplayName(_ deviceType: AVCaptureDevice.DeviceType) -> String {
+        switch deviceType {
+        case .builtInUltraWideCamera:
+            return "0.5x"
+        case .builtInWideAngleCamera:
+            return "1x"
+        case .builtInTelephotoCamera:
+            return "2x"
+        default:
+            return "unknown"
         }
     }
     
@@ -195,8 +316,8 @@ final class CameraManager: NSObject, ObservableObject {
                 }
                 
                 // Allow the device to record in its natural orientation
-                if connection.isVideoRotationAngleSupported(0) {
-                    connection.videoRotationAngle = 0
+                if connection.isVideoRotationAngleSupported(90) {
+                    connection.videoRotationAngle = 90 // Portrait orientation (90 degrees)
                 }
             }
         }
@@ -218,8 +339,27 @@ final class CameraManager: NSObject, ObservableObject {
             // Switch position
             let newPosition: AVCaptureDevice.Position = currentPosition == .back ? .front : .back
             
+            // Discover lenses for new position synchronously
+            let availableTypes = self.discoverAvailableLensesSync(for: newPosition)
+            
+            // Update properties on main thread
+            DispatchQueue.main.async {
+                self.availableLenses = availableTypes
+                
+                // Set default to wide angle if available
+                if availableTypes.contains(.builtInWideAngleCamera) {
+                    self.currentLensType = .builtInWideAngleCamera
+                } else if let firstLens = availableTypes.first {
+                    self.currentLensType = firstLens
+                }
+            }
+            
+            // Use the discovered lens type for camera setup
+            let targetLensType = availableTypes.contains(.builtInWideAngleCamera) ? 
+                .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera)
+            
             // Setup new camera
-            if let newCamera = self.getCamera(for: newPosition) {
+            if let newCamera = self.getCamera(for: newPosition, deviceType: targetLensType) {
                 do {
                     let newVideoInput = try AVCaptureDeviceInput(device: newCamera)
                     if self.captureSession.canAddInput(newVideoInput) {
@@ -228,7 +368,6 @@ final class CameraManager: NSObject, ObservableObject {
                         
                         DispatchQueue.main.async {
                             self.cameraPosition = newPosition
-                            self.zoomLevel = 1.0 // Reset zoom when switching cameras
                         }
                     }
                 } catch {
@@ -242,47 +381,87 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Optimized Camera Controls
-    func setZoom(level: CGFloat) {
-        guard let device = currentDevice else { return }
+    // MARK: - Lens Switching Controls
+    func switchToNextLens() {
+        guard let currentIndex = availableLenses.firstIndex(of: currentLensType),
+              currentIndex < availableLenses.count - 1 else { return }
         
-        let clampedZoom = max(minZoomLevel, min(level, min(maxZoomLevel, device.activeFormat.videoMaxZoomFactor)))
-        
-        // Store pending zoom level and use timer to debounce rapid calls
-        pendingZoomLevel = clampedZoom
-        zoomTimer?.invalidate()
-        
-        zoomTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: false) { [weak self] _ in
-            self?.applyPendingZoom()
-        }
-        
-        // Update UI immediately for responsiveness
-        DispatchQueue.main.async {
-            self.zoomLevel = clampedZoom
-        }
+        let nextLensType = availableLenses[currentIndex + 1]
+        switchToLens(nextLensType)
     }
     
-    private func applyPendingZoom() {
-        guard let device = currentDevice, let zoom = pendingZoomLevel else { return }
+    func switchToPreviousLens() {
+        guard let currentIndex = availableLenses.firstIndex(of: currentLensType),
+              currentIndex > 0 else { return }
         
-        do {
-            try device.lockForConfiguration()
-            device.videoZoomFactor = zoom
-            device.unlockForConfiguration()
-            pendingZoomLevel = nil
-        } catch {
-            DispatchQueue.main.async {
-                self.errorMessage = "Unable to set zoom: \(error.localizedDescription)"
+        let previousLensType = availableLenses[currentIndex - 1]
+        switchToLens(previousLensType)
+    }
+    
+    func switchToSpecificLens(_ lensType: AVCaptureDevice.DeviceType) {
+        guard availableLenses.contains(lensType) else { return }
+        switchToLens(lensType)
+    }
+    
+    private func switchToLens(_ lensType: AVCaptureDevice.DeviceType) {
+        guard availableLenses.contains(lensType) else { return }
+        
+        sessionQueue.async {
+            self.captureSession.beginConfiguration()
+            
+            // Remove current video input
+            if let videoInput = self.videoDeviceInput {
+                self.captureSession.removeInput(videoInput)
             }
+            
+            // Get new camera device
+            if let newCamera = self.getCamera(for: self.cameraPosition, deviceType: lensType) {
+                do {
+                    let newVideoInput = try AVCaptureDeviceInput(device: newCamera)
+                    if self.captureSession.canAddInput(newVideoInput) {
+                        self.captureSession.addInput(newVideoInput)
+                        self.videoDeviceInput = newVideoInput
+                        
+                        DispatchQueue.main.async {
+                            self.currentLensType = lensType
+                        }
+                    }
+                } catch {
+                    DispatchQueue.main.async {
+                        self.errorMessage = "Unable to switch lens: \(error.localizedDescription)"
+                    }
+                }
+            }
+            
+            self.captureSession.commitConfiguration()
         }
     }
     
-    func zoomIn() {
-        setZoom(level: zoomLevel + 0.5)
+    func canSwitchToNextLens() -> Bool {
+        guard let currentIndex = availableLenses.firstIndex(of: currentLensType) else { return false }
+        return currentIndex < availableLenses.count - 1
     }
     
-    func zoomOut() {
-        setZoom(level: zoomLevel - 0.5)
+    func canSwitchToPreviousLens() -> Bool {
+        guard let currentIndex = availableLenses.firstIndex(of: currentLensType) else { return false }
+        return currentIndex > 0
+    }
+    
+    func getLensDisplayName(_ lensType: AVCaptureDevice.DeviceType) -> String {
+        switch lensType {
+        case .builtInUltraWideCamera:
+            return "0.5x"
+        case .builtInWideAngleCamera:
+            return "1x"
+        case .builtInTelephotoCamera:
+            return "2x"
+        default:
+            return "1x"
+        }
+    }
+    
+    func getCurrentLensDisplayName() -> String {
+        return getLensDisplayName(currentLensType)
     }
     
     // MARK: - New Toggle Controls
@@ -473,16 +652,12 @@ final class CameraManager: NSObject, ObservableObject {
                     return
                 }
                 
+                exportSession.outputURL = outputURL
+                exportSession.outputFileType = .mov
                 exportSession.videoComposition = videoComposition
                 
-                // Use modern async export (iOS 18+)
-                if #available(iOS 18.0, *) {
-                    try await exportSession.export(to: outputURL, as: .mov)
-                } else {
-                    exportSession.outputURL = outputURL
-                    exportSession.outputFileType = .mov
-                    try await exportSession.export()
-                }
+                // Use modern async export
+                await exportSession.export()
                 
                 await MainActor.run {
                     self.processingProgress = 1.0
@@ -618,12 +793,23 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     // MARK: - Helper Methods
-    private func getCamera(for position: AVCaptureDevice.Position) -> AVCaptureDevice? {
+    private func getCamera(for position: AVCaptureDevice.Position, deviceType: AVCaptureDevice.DeviceType? = nil) -> AVCaptureDevice? {
+        let deviceTypes: [AVCaptureDevice.DeviceType] = [
+            .builtInUltraWideCamera,
+            .builtInWideAngleCamera,
+            .builtInTelephotoCamera
+        ]
+        
         let deviceDiscoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInWideAngleCamera, .builtInUltraWideCamera],
+            deviceTypes: deviceTypes,
             mediaType: .video,
             position: position
         )
+        
+        if let specificType = deviceType {
+            return deviceDiscoverySession.devices.first { $0.deviceType == specificType }
+        }
+        
         return deviceDiscoverySession.devices.first
     }
     
