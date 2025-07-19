@@ -174,63 +174,89 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     private func discoverAvailableLensesSync(for position: AVCaptureDevice.Position) -> [AVCaptureDevice.DeviceType] {
-        // Extended device types including multi-camera systems
-        let deviceTypes: [AVCaptureDevice.DeviceType] = [
-            .builtInUltraWideCamera,    // 0.5x
-            .builtInWideAngleCamera,    // 1x (default)
-            .builtInTelephotoCamera,    // 2x+
-            .builtInTripleCamera,       // iPhone 15 Pro/Pro Max
-            .builtInDualCamera,         // iPhone Plus models
-            .builtInDualWideCamera      // iPhone 11/12/13/14/15 models
-        ]
+        // Simple approach - check each lens type individually
+        var availableTypes: [AVCaptureDevice.DeviceType] = []
         
-        let discoverySession = AVCaptureDevice.DiscoverySession(
-            deviceTypes: deviceTypes,
+        print("📷 Individual lens discovery for position \(position):")
+        
+        // Check ultra-wide
+        let ultraWideDiscovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInUltraWideCamera],
+            mediaType: .video,
+            position: position
+        )
+        if !ultraWideDiscovery.devices.isEmpty {
+            availableTypes.append(.builtInUltraWideCamera)
+            print("  ✓ Ultra-wide (0.5x) available")
+        }
+        
+        // Check wide angle
+        let wideAngleDiscovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera],
+            mediaType: .video,
+            position: position
+        )
+        if !wideAngleDiscovery.devices.isEmpty {
+            availableTypes.append(.builtInWideAngleCamera)
+            print("  ✓ Wide-angle (1x) available")
+        }
+        
+        // Check telephoto
+        let telephotoDiscovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInTelephotoCamera],
+            mediaType: .video,
+            position: position
+        )
+        if !telephotoDiscovery.devices.isEmpty {
+            availableTypes.append(.builtInTelephotoCamera)
+            print("  ✓ Telephoto (2x) available")
+        }
+        
+        // For devices with DualWideCamera, we might need to check for additional "zoom" options
+        // by looking at the device formats and zoom factors
+        let dualWideDiscovery = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInDualWideCamera],
             mediaType: .video,
             position: position
         )
         
-        var availableTypes: [AVCaptureDevice.DeviceType] = []
-        
-        print("📷 Checking available devices for position \(position):")
-        for device in discoverySession.devices {
-            print("  - \(device.deviceType.rawValue): \(device.localizedName)")
+        for device in dualWideDiscovery.devices {
+            print("  📷 DualWideCamera found - checking for additional zoom options...")
             
-            // For multi-camera devices, we need to check individual lens availability
-            if device.deviceType == .builtInTripleCamera ||
-               device.deviceType == .builtInDualCamera ||
-               device.deviceType == .builtInDualWideCamera {
+            // Check if this device has multiple formats that could represent different "zoom levels"
+            let formats = device.formats
+            print("    Available formats: \(formats.count)")
+            
+            // Look for formats with different zoom factors
+            let zoomFactors = formats.map { $0.videoMaxZoomFactor }
+            let uniqueZoomFactors = Array(Set(zoomFactors)).sorted()
+            print("    Unique zoom factors: \(uniqueZoomFactors)")
+            
+            // If we have multiple zoom factors, we might have additional "lens" options
+            if uniqueZoomFactors.count > 1 {
+                print("    ✓ Multiple zoom levels detected - this might provide additional lens options")
                 
-                // Check for ultra-wide separately
-                let ultraWideDiscovery = AVCaptureDevice.DiscoverySession(
-                    deviceTypes: [.builtInUltraWideCamera],
-                    mediaType: .video,
-                    position: position
-                )
-                if !ultraWideDiscovery.devices.isEmpty {
-                    availableTypes.append(.builtInUltraWideCamera)
-                    print("    ✓ Ultra-wide (0.5x) available")
-                }
-                
-                // Wide angle is always available
-                availableTypes.append(.builtInWideAngleCamera)
-                print("    ✓ Wide-angle (1x) available")
-                
-                // Check for telephoto separately
-                let telephotoDiscovery = AVCaptureDevice.DiscoverySession(
-                    deviceTypes: [.builtInTelephotoCamera],
-                    mediaType: .video,
-                    position: position
-                )
-                if !telephotoDiscovery.devices.isEmpty {
+                // For now, let's add a "virtual" telephoto option if we have multiple zoom factors
+                // This is a workaround for devices that don't expose separate telephoto lenses
+                if !availableTypes.contains(.builtInTelephotoCamera) && uniqueZoomFactors.count >= 2 {
+                    print("    ✓ Adding virtual telephoto option based on zoom factors")
                     availableTypes.append(.builtInTelephotoCamera)
-                    print("    ✓ Telephoto (2x) available")
                 }
-            } else {
-                // Single camera device - add directly
-                if !availableTypes.contains(device.deviceType) {
-                    availableTypes.append(device.deviceType)
-                }
+            }
+        }
+        
+        // Also check individual wide-angle cameras for zoom factor differences
+        let wideAngleDevices = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera],
+            mediaType: .video,
+            position: position
+        ).devices
+        
+        if wideAngleDevices.count > 1 {
+            print("  📷 Found multiple wide-angle cameras:")
+            for (index, device) in wideAngleDevices.enumerated() {
+                let zoomFactor = device.activeFormat.videoMaxZoomFactor
+                print("    \(index + 1). \(device.localizedName) - max zoom: \(zoomFactor)")
             }
         }
         
@@ -807,7 +833,27 @@ final class CameraManager: NSObject, ObservableObject {
         )
         
         if let specificType = deviceType {
-            return deviceDiscoverySession.devices.first { $0.deviceType == specificType }
+            let matchingDevices = deviceDiscoverySession.devices.filter { $0.deviceType == specificType }
+            
+            // For wide-angle cameras, we need to be more specific about which one to choose
+            if specificType == .builtInWideAngleCamera && matchingDevices.count > 1 {
+                print("📷 Found \(matchingDevices.count) wide-angle cameras, selecting the one with lowest zoom factor...")
+                
+                // Sort by zoom factor and choose the one closest to 1x (lowest zoom factor)
+                let sortedDevices = matchingDevices.sorted { device1, device2 in
+                    let zoom1 = device1.activeFormat.videoMaxZoomFactor
+                    let zoom2 = device2.activeFormat.videoMaxZoomFactor
+                    print("  - Device 1: \(device1.localizedName), max zoom: \(zoom1)")
+                    print("  - Device 2: \(device2.localizedName), max zoom: \(zoom2)")
+                    return zoom1 < zoom2
+                }
+                
+                let selectedDevice = sortedDevices.first
+                print("📷 Selected wide-angle camera: \(selectedDevice?.localizedName ?? "unknown") with max zoom: \(selectedDevice?.activeFormat.videoMaxZoomFactor ?? 0)")
+                return selectedDevice
+            }
+            
+            return matchingDevices.first
         }
         
         return deviceDiscoverySession.devices.first
@@ -868,4 +914,4 @@ extension CameraManager: AVCaptureFileOutputRecordingDelegate {
             }
         }
     }
-} 
+}
