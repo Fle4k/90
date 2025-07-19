@@ -30,7 +30,7 @@ final class CameraPreviewView: UIView {
     }
     
     func setupPreview(with cameraManager: CameraManager) {
-        // Configure the preview layer
+        // Configure the preview layer to show the center crop area
         videoPreviewLayer.videoGravity = .resizeAspectFill
         
         // Initial session assignment

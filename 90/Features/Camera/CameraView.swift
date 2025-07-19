@@ -171,17 +171,15 @@ struct RealCameraPreviewArea: View {
     
     var body: some View {
         ZStack {
-            // Real camera preview
+            // Black background
+            Color.black
+                .frame(width: geometry.size.width, height: previewHeight)
+            
+            // Camera preview showing only the 16:9 crop area
             CameraPreview(cameraManager: cameraManager)
                 .frame(width: geometry.size.width, height: previewHeight)
-                .clipped() // Crop to 16:9 ratio
-            
-            // Optional: 16:9 crop indicator (subtle overlay)
-            Rectangle()
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                .frame(width: geometry.size.width, height: previewHeight)
+                .clipped()
         }
-        .clipped()
     }
 }
 

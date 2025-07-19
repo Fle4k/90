@@ -101,8 +101,14 @@ final class CameraManager: NSObject, ObservableObject {
         sessionQueue.async {
             self.captureSession.beginConfiguration()
             
-            // Set session preset
-            if self.captureSession.canSetSessionPreset(.high) {
+            // Set session preset for high quality vertical recording
+            if self.captureSession.canSetSessionPreset(.hd4K3840x2160) {
+                self.captureSession.sessionPreset = .hd4K3840x2160
+            } else if self.captureSession.canSetSessionPreset(.hd1920x1080) {
+                self.captureSession.sessionPreset = .hd1920x1080
+            } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
+                self.captureSession.sessionPreset = .hd1280x720
+            } else {
                 self.captureSession.sessionPreset = .high
             }
             
@@ -181,6 +187,18 @@ final class CameraManager: NSObject, ObservableObject {
         if captureSession.canAddOutput(movieOutput) {
             captureSession.addOutput(movieOutput)
             self.movieFileOutput = movieOutput
+            
+            // Configure video connection after adding output
+            if let connection = movieOutput.connection(with: .video) {
+                if connection.isVideoStabilizationSupported {
+                    connection.preferredVideoStabilizationMode = .auto
+                }
+                
+                // Allow the device to record in its natural orientation
+                if connection.isVideoRotationAngleSupported(0) {
+                    connection.videoRotationAngle = 0
+                }
+            }
         }
     }
     
@@ -351,8 +369,7 @@ final class CameraManager: NSObject, ObservableObject {
                 let videoTracks = try await asset.loadTracks(withMediaType: .video)
                 let audioTracks = try await asset.loadTracks(withMediaType: .audio)
                 
-                guard let videoTrack = videoTracks.first,
-                      let audioTrack = audioTracks.first else {
+                guard let videoTrack = videoTracks.first else {
                     await MainActor.run {
                         self.errorMessage = "Unable to load video tracks"
                         self.isProcessingVideo = false
@@ -363,8 +380,7 @@ final class CameraManager: NSObject, ObservableObject {
                 // Create composition
                 let composition = AVMutableComposition()
                 
-                guard let videoCompositionTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
-                      let audioCompositionTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+                guard let videoCompositionTrack = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
                     await MainActor.run {
                         self.errorMessage = "Unable to create composition tracks"
                         self.isProcessingVideo = false
@@ -372,13 +388,21 @@ final class CameraManager: NSObject, ObservableObject {
                     return
                 }
                 
+                // Add audio track if available
+                if let audioTrack = audioTracks.first {
+                    if let audioCompositionTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) {
+                        let duration = try await asset.load(.duration)
+                        let timeRange = CMTimeRange(start: .zero, duration: duration)
+                        try audioCompositionTrack.insertTimeRange(timeRange, of: audioTrack, at: .zero)
+                    }
+                }
+                
                 // Load properties asynchronously
                 let duration = try await asset.load(.duration)
                 let timeRange = CMTimeRange(start: .zero, duration: duration)
                 
-                // Insert tracks
+                // Insert video track
                 try videoCompositionTrack.insertTimeRange(timeRange, of: videoTrack, at: .zero)
-                try audioCompositionTrack.insertTimeRange(timeRange, of: audioTrack, at: .zero)
                 
                 await MainActor.run {
                     self.processingProgress = 0.3
@@ -389,16 +413,21 @@ final class CameraManager: NSObject, ObservableObject {
                 let videoSize = try await videoTrack.load(.naturalSize)
                 let transform = try await videoTrack.load(.preferredTransform)
                 
-                // For vertical video, extract 16:9 horizontal slice from center
+                // Determine the actual video dimensions after applying transform
+                let transformedSize = videoSize.applying(transform)
+                let actualWidth = abs(transformedSize.width)
+                let actualHeight = abs(transformedSize.height)
+                
+                // For vertical video (height > width), crop to 16:9 landscape
                 let targetAspectRatio: CGFloat = 16.0 / 9.0
                 
-                // Calculate dimensions for 16:9 horizontal slice from vertical video
-                let cropWidth = videoSize.width // Use full width of vertical video
-                let cropHeight = videoSize.width / targetAspectRatio // Calculate height for 16:9 ratio
+                // Calculate crop area - take 16:9 slice from center of vertical video
+                let cropWidth = min(actualWidth, actualHeight * targetAspectRatio)
+                let cropHeight = cropWidth / targetAspectRatio
                 
-                // Center the crop vertically (take from middle of vertical video)
-                let cropX: CGFloat = 0
-                let cropY = (videoSize.height - cropHeight) / 2
+                // Center the crop area
+                let cropX = (actualWidth - cropWidth) / 2
+                let cropY = (actualHeight - cropHeight) / 2
                 
                 // Final output size (landscape 16:9)
                 let outputWidth: CGFloat = 1920 // HD width  
@@ -415,22 +444,18 @@ final class CameraManager: NSObject, ObservableObject {
                 
                 let layerInstruction = AVMutableVideoCompositionLayerInstruction(assetTrack: videoCompositionTrack)
                 
-                // Create crop and rotation transform
-                var combinedTransform = CGAffineTransform.identity
+                // Create transform for cropping and scaling
+                var finalTransform = transform
                 
-                // Apply cropping transform
+                // Apply cropping by translating and scaling
                 let scaleX = outputWidth / cropWidth
                 let scaleY = outputHeight / cropHeight
-                let scale = max(scaleX, scaleY)
+                let scale = min(scaleX, scaleY)
                 
-                combinedTransform = combinedTransform.scaledBy(x: scale, y: scale)
-                combinedTransform = combinedTransform.translatedBy(x: -cropX * scale, y: -cropY * scale)
+                finalTransform = finalTransform.concatenating(CGAffineTransform(translationX: -cropX, y: -cropY))
+                finalTransform = finalTransform.concatenating(CGAffineTransform(scaleX: scale, y: scale))
                 
-                // Apply 90-degree clockwise rotation for landscape output
-                combinedTransform = combinedTransform.rotated(by: .pi / 2)
-                combinedTransform = combinedTransform.translatedBy(x: 0, y: -outputWidth)
-                
-                layerInstruction.setTransform(combinedTransform, at: .zero)
+                layerInstruction.setTransform(finalTransform, at: .zero)
                 instruction.layerInstructions = [layerInstruction]
                 videoComposition.instructions = [instruction]
                 
@@ -448,12 +473,16 @@ final class CameraManager: NSObject, ObservableObject {
                     return
                 }
                 
-                exportSession.outputURL = outputURL
-                exportSession.outputFileType = .mov
                 exportSession.videoComposition = videoComposition
                 
-                // Use modern async export
-                try await exportSession.export()
+                // Use modern async export (iOS 18+)
+                if #available(iOS 18.0, *) {
+                    try await exportSession.export(to: outputURL, as: .mov)
+                } else {
+                    exportSession.outputURL = outputURL
+                    exportSession.outputFileType = .mov
+                    try await exportSession.export()
+                }
                 
                 await MainActor.run {
                     self.processingProgress = 1.0
@@ -479,6 +508,8 @@ final class CameraManager: NSObject, ObservableObject {
         let fileName = "processed_video_\(Date().timeIntervalSince1970).mov"
         return documentsDirectory.appendingPathComponent(fileName)
     }
+    
+
     
     // MARK: - Photo Library Integration
     func checkPhotoLibraryPermission() {
