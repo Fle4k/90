@@ -140,8 +140,11 @@ final class CameraManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.availableLenses = availableTypes
             
-            // Set default to wide angle if available, otherwise use first available
-            if availableTypes.contains(.builtInWideAngleCamera) {
+            // Set default to ultra-wide (0.5x) if available, as it's the most natural starting point
+            // on iPhone 15, otherwise fall back to wide angle
+            if availableTypes.contains(.builtInUltraWideCamera) {
+                self.currentLensType = .builtInUltraWideCamera
+            } else if availableTypes.contains(.builtInWideAngleCamera) {
                 self.currentLensType = .builtInWideAngleCamera
             } else if let firstLens = availableTypes.first {
                 self.currentLensType = firstLens
@@ -149,8 +152,10 @@ final class CameraManager: NSObject, ObservableObject {
         }
         
         // Use the discovered lens type for camera setup
-        let targetLensType = availableTypes.contains(.builtInWideAngleCamera) ? 
-            .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera)
+        // Prefer ultra-wide as default, then wide-angle, then first available
+        let targetLensType = availableTypes.contains(.builtInUltraWideCamera) ? 
+            .builtInUltraWideCamera : (availableTypes.contains(.builtInWideAngleCamera) ? 
+            .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera))
         
         guard let videoDevice = getCamera(for: position, deviceType: targetLensType) else {
             DispatchQueue.main.async {
@@ -198,7 +203,7 @@ final class CameraManager: NSObject, ObservableObject {
         )
         if !wideAngleDiscovery.devices.isEmpty {
             availableTypes.append(.builtInWideAngleCamera)
-            print("  ✓ Wide-angle (1x) available")
+            print("  ✓ Main camera (2x) available")
         }
         
         // Check telephoto
@@ -209,56 +214,14 @@ final class CameraManager: NSObject, ObservableObject {
         )
         if !telephotoDiscovery.devices.isEmpty {
             availableTypes.append(.builtInTelephotoCamera)
-            print("  ✓ Telephoto (2x) available")
+            print("  ✓ Telephoto (3x) available")
         }
         
-        // For devices with DualWideCamera, we might need to check for additional "zoom" options
-        // by looking at the device formats and zoom factors
-        let dualWideDiscovery = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInDualWideCamera],
-            mediaType: .video,
-            position: position
-        )
+        // Note: We're not adding virtual telephoto options anymore
+        // Only show lenses that actually exist on the device
+        // The DualWideCamera zoom factors are for digital zoom, not optical lenses
         
-        for device in dualWideDiscovery.devices {
-            print("  📷 DualWideCamera found - checking for additional zoom options...")
-            
-            // Check if this device has multiple formats that could represent different "zoom levels"
-            let formats = device.formats
-            print("    Available formats: \(formats.count)")
-            
-            // Look for formats with different zoom factors
-            let zoomFactors = formats.map { $0.videoMaxZoomFactor }
-            let uniqueZoomFactors = Array(Set(zoomFactors)).sorted()
-            print("    Unique zoom factors: \(uniqueZoomFactors)")
-            
-            // If we have multiple zoom factors, we might have additional "lens" options
-            if uniqueZoomFactors.count > 1 {
-                print("    ✓ Multiple zoom levels detected - this might provide additional lens options")
-                
-                // For now, let's add a "virtual" telephoto option if we have multiple zoom factors
-                // This is a workaround for devices that don't expose separate telephoto lenses
-                if !availableTypes.contains(.builtInTelephotoCamera) && uniqueZoomFactors.count >= 2 {
-                    print("    ✓ Adding virtual telephoto option based on zoom factors")
-                    availableTypes.append(.builtInTelephotoCamera)
-                }
-            }
-        }
-        
-        // Also check individual wide-angle cameras for zoom factor differences
-        let wideAngleDevices = AVCaptureDevice.DiscoverySession(
-            deviceTypes: [.builtInWideAngleCamera],
-            mediaType: .video,
-            position: position
-        ).devices
-        
-        if wideAngleDevices.count > 1 {
-            print("  📷 Found multiple wide-angle cameras:")
-            for (index, device) in wideAngleDevices.enumerated() {
-                let zoomFactor = device.activeFormat.videoMaxZoomFactor
-                print("    \(index + 1). \(device.localizedName) - max zoom: \(zoomFactor)")
-            }
-        }
+        // Note: iPhone 15 has a single main camera, so we don't need to check for multiple wide-angle cameras
         
         // Remove duplicates and sort in expected order
         let uniqueTypes = Array(Set(availableTypes))
@@ -275,6 +238,13 @@ final class CameraManager: NSObject, ObservableObject {
         
         print("📷 Final available lenses: \(sortedTypes.map { deviceTypeToDisplayName($0) })")
         
+        // Debug: Print detailed lens information
+        print("📱 Device lens details:")
+        for lensType in sortedTypes {
+            let displayName = deviceTypeToDisplayName(lensType)
+            print("  - \(lensType): \(displayName)")
+        }
+        
         return sortedTypes
     }
     
@@ -284,8 +254,11 @@ final class CameraManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.availableLenses = availableTypes
             
-            // Set default to wide angle if available
-            if availableTypes.contains(.builtInWideAngleCamera) {
+            // Set default to ultra-wide (0.5x) if available, as it's the most natural starting point
+            // on iPhone 15, otherwise fall back to wide angle
+            if availableTypes.contains(.builtInUltraWideCamera) {
+                self.currentLensType = .builtInUltraWideCamera
+            } else if availableTypes.contains(.builtInWideAngleCamera) {
                 self.currentLensType = .builtInWideAngleCamera
             } else if let firstLens = availableTypes.first {
                 self.currentLensType = firstLens
@@ -298,9 +271,11 @@ final class CameraManager: NSObject, ObservableObject {
         case .builtInUltraWideCamera:
             return "0.5x"
         case .builtInWideAngleCamera:
-            return "1x"
+            // On iPhone 15, the main camera is actually 2x relative to ultra-wide
+            // So we need to check if this is the main camera or a true 1x
+            return "2x" // This is the main camera (24mm) on iPhone 15
         case .builtInTelephotoCamera:
-            return "2x"
+            return "3x" // This would be the telephoto if available
         default:
             return "unknown"
         }
@@ -372,17 +347,22 @@ final class CameraManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.availableLenses = availableTypes
                 
-                // Set default to wide angle if available
-                if availableTypes.contains(.builtInWideAngleCamera) {
-                    self.currentLensType = .builtInWideAngleCamera
-                } else if let firstLens = availableTypes.first {
-                    self.currentLensType = firstLens
-                }
+                            // Set default to ultra-wide (0.5x) if available, as it's the most natural starting point
+            // on iPhone 15, otherwise fall back to wide angle
+            if availableTypes.contains(.builtInUltraWideCamera) {
+                self.currentLensType = .builtInUltraWideCamera
+            } else if availableTypes.contains(.builtInWideAngleCamera) {
+                self.currentLensType = .builtInWideAngleCamera
+            } else if let firstLens = availableTypes.first {
+                self.currentLensType = firstLens
+            }
             }
             
             // Use the discovered lens type for camera setup
-            let targetLensType = availableTypes.contains(.builtInWideAngleCamera) ? 
-                .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera)
+            // Prefer ultra-wide as default, then wide-angle, then first available
+            let targetLensType = availableTypes.contains(.builtInUltraWideCamera) ? 
+                .builtInUltraWideCamera : (availableTypes.contains(.builtInWideAngleCamera) ? 
+                .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera))
             
             // Setup new camera
             if let newCamera = self.getCamera(for: newPosition, deviceType: targetLensType) {
@@ -430,7 +410,10 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     private func switchToLens(_ lensType: AVCaptureDevice.DeviceType) {
-        guard availableLenses.contains(lensType) else { return }
+        guard availableLenses.contains(lensType) else { 
+            print("📷 Lens type \(lensType) not available")
+            return 
+        }
         
         sessionQueue.async {
             self.captureSession.beginConfiguration()
@@ -450,12 +433,19 @@ final class CameraManager: NSObject, ObservableObject {
                         
                         DispatchQueue.main.async {
                             self.currentLensType = lensType
+                            print("📷 Successfully switched to lens: \(lensType)")
                         }
                     }
                 } catch {
                     DispatchQueue.main.async {
                         self.errorMessage = "Unable to switch lens: \(error.localizedDescription)"
+                        print("📷 Failed to switch to lens \(lensType): \(error.localizedDescription)")
                     }
+                }
+            } else {
+                DispatchQueue.main.async {
+                    self.errorMessage = "Lens not available on this device"
+                    print("📷 No camera found for lens type: \(lensType)")
                 }
             }
             
@@ -478,11 +468,12 @@ final class CameraManager: NSObject, ObservableObject {
         case .builtInUltraWideCamera:
             return "0.5x"
         case .builtInWideAngleCamera:
-            return "1x"
+            // On iPhone 15, the main camera is actually 2x relative to ultra-wide
+            return "2x" // This is the main camera (24mm) on iPhone 15
         case .builtInTelephotoCamera:
-            return "2x"
+            return "3x" // This would be the telephoto if available
         default:
-            return "1x"
+            return "2x"
         }
     }
     
@@ -835,25 +826,14 @@ final class CameraManager: NSObject, ObservableObject {
         if let specificType = deviceType {
             let matchingDevices = deviceDiscoverySession.devices.filter { $0.deviceType == specificType }
             
-            // For wide-angle cameras, we need to be more specific about which one to choose
-            if specificType == .builtInWideAngleCamera && matchingDevices.count > 1 {
-                print("📷 Found \(matchingDevices.count) wide-angle cameras, selecting the one with lowest zoom factor...")
-                
-                // Sort by zoom factor and choose the one closest to 1x (lowest zoom factor)
-                let sortedDevices = matchingDevices.sorted { device1, device2 in
-                    let zoom1 = device1.activeFormat.videoMaxZoomFactor
-                    let zoom2 = device2.activeFormat.videoMaxZoomFactor
-                    print("  - Device 1: \(device1.localizedName), max zoom: \(zoom1)")
-                    print("  - Device 2: \(device2.localizedName), max zoom: \(zoom2)")
-                    return zoom1 < zoom2
-                }
-                
-                let selectedDevice = sortedDevices.first
-                print("📷 Selected wide-angle camera: \(selectedDevice?.localizedName ?? "unknown") with max zoom: \(selectedDevice?.activeFormat.videoMaxZoomFactor ?? 0)")
-                return selectedDevice
+            // Only return a device if it actually exists
+            if !matchingDevices.isEmpty {
+                print("📷 Found \(matchingDevices.count) devices for type \(specificType)")
+                return matchingDevices.first
+            } else {
+                print("📷 No devices found for type \(specificType)")
+                return nil
             }
-            
-            return matchingDevices.first
         }
         
         return deviceDiscoverySession.devices.first

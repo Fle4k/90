@@ -11,7 +11,7 @@ final class CameraViewModel: ObservableObject {
     @Published var hasRecordingPermission = false
     @Published var previewImage: UIImage?
     @Published var errorMessage: String?
-    @Published var currentLensDisplayName: String = "1x"
+    @Published var currentLensDisplayName: String = "0.5x"
     @Published var canSwitchToNext: Bool = false
     @Published var canSwitchToPrevious: Bool = false
     @Published var availableLenses: [AVCaptureDevice.DeviceType] = []
@@ -258,5 +258,15 @@ final class CameraViewModel: ObservableObject {
     
     func stopCameraSession() {
         cameraManager.stopSession()
+    }
+    
+    // MARK: - Debug Functions
+    func printAvailableLenses() {
+        print("🔍 Current available lenses:")
+        for lensType in availableLenses {
+            let displayName = cameraManager.getLensDisplayName(lensType)
+            print("  - \(lensType): \(displayName)")
+        }
+        print("Current lens: \(cameraManager.getCurrentLensDisplayName())")
     }
 } 

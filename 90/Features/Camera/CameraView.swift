@@ -316,11 +316,11 @@ struct LensButton: View {
         case .builtInUltraWideCamera:
             return "0,5"
         case .builtInWideAngleCamera:
-            return "1×"
+            return "2×" // Main camera on iPhone 15 (24mm)
         case .builtInTelephotoCamera:
-            return "2"
+            return "3" // Telephoto if available
         default:
-            return "1×"
+            return "2×"
         }
     }
     
