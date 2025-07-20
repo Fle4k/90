@@ -4,6 +4,21 @@ import AVFoundation
 struct CameraView: View {
     @StateObject private var viewModel = CameraViewModel()
     
+    private func getProgressText() -> String {
+        if viewModel.isProcessingVideo {
+            return viewModel.processingStatus ?? "Processing video..."
+        } else if viewModel.isSavingToLibrary {
+            return "Saving to camera roll..."
+        } else if let status = viewModel.lastSaveStatus {
+            return status
+        }
+        return ""
+    }
+    
+    private func shouldShowPulse() -> Bool {
+        return viewModel.isProcessingVideo || viewModel.isSavingToLibrary
+    }
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -12,6 +27,29 @@ struct CameraView: View {
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    
+                    // Progress information above video frame, below safe zone
+                    VStack(spacing: 0) {
+                        if viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil {
+                            Text(getProgressText())
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                                .background(Color.black.opacity(0.8))
+                                .cornerRadius(20)
+                                .modifier(PulseAnimation(isActive: shouldShowPulse()))
+                        } else {
+                            // Hidden placeholder to maintain consistent spacing
+                            Color.clear
+                                .frame(height: 44) // Fixed height for all progress states
+                        }
+                    }
+                    .padding(.top, 20)
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isProcessingVideo)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
                     
                     Spacer()
                     // 16:9 camera preview area (cropped view)
@@ -39,7 +77,7 @@ struct CameraView: View {
                     // More space before ring menu
                     Spacer()
                     
-                    // Ring menu with PDF background and 8 buttons
+                    // Ring menu with PDF background and 6 buttons
                     RingMenuView(
                         isRecording: viewModel.isRecording,
                         onRecordTap: {
@@ -48,79 +86,6 @@ struct CameraView: View {
                         viewModel: viewModel
                     )
                     .padding(.bottom, 50)
-                }
-                
-                // Status overlays moved to TOP of screen
-                if viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil {
-                    VStack {
-                        // Status at the top
-                        if viewModel.isProcessingVideo {
-                            VStack(spacing: 12) {
-                                HStack {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                        .scaleEffect(0.8)
-                                    
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(viewModel.processingStatus ?? "Processing video...")
-                                            .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.white)
-                                        
-                                        // Progress bar
-                                        HStack {
-                                            Rectangle()
-                                                .fill(Color.white)
-                                                .frame(width: CGFloat(viewModel.processingProgress) * 120, height: 3)
-                                                .animation(.easeInOut(duration: 0.3), value: viewModel.processingProgress)
-                                        
-                                            Rectangle()
-                                                .fill(Color.white.opacity(0.3))
-                                                .frame(height: 3)
-                                        }
-                                        .frame(width: 120, height: 3)
-                                        .clipShape(Capsule())
-                                        
-                                        Text("\(Int(viewModel.processingProgress * 100))%")
-                                            .font(.system(size: 12, weight: .regular))
-                                            .foregroundColor(.white.opacity(0.8))
-                                    }
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(Color.black.opacity(0.8))
-                            .cornerRadius(24)
-                        } else if viewModel.isSavingToLibrary {
-                            HStack {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(0.8)
-                                
-                                Text("Saving to camera roll...")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(.white)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.black.opacity(0.7))
-                            .cornerRadius(20)
-                        } else if let status = viewModel.lastSaveStatus {
-                            Text(status)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.black.opacity(0.7))
-                                .cornerRadius(20)
-                        }
-                        
-                        Spacer() // Push content to top
-                    }
-                    .padding(.top, 60) // Safe area padding
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.isProcessingVideo)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
                 }
             }
         }
@@ -242,7 +207,12 @@ struct RingMenuView: View {
         case 2: // Screen dimming toggle
             return { viewModel.toggleScreenDimming() }
         case 3: // Gallery
-            return { /* TODO: Implement gallery */ }
+            return { 
+                // Open the camera roll directly
+                if let url = URL(string: "photos-redirect://") {
+                    UIApplication.shared.open(url)
+                }
+            }
         case 4: // Three dots menu
             return { /* TODO: Implement menu */ }
         case 5: // Audio toggle
@@ -326,7 +296,7 @@ struct LensButton: View {
                 .frame(width: 44, height: 44)
                 .background(
                     Circle()
-                        .fill(isSelected ? Color.yellow : Color.clear)
+                        .fill(isSelected ? Color.gray : Color.clear)
                         .overlay(
                             Circle()
                                 .stroke(isSelected ? Color.clear : Color.white.opacity(0.3), lineWidth: 1)
@@ -340,4 +310,32 @@ struct LensButton: View {
 
 #Preview {
     CameraView()
+}
+
+// MARK: - Pulse Animation Modifier
+struct PulseAnimation: ViewModifier {
+    let isActive: Bool
+    @State private var isAnimating = false
+    
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(isActive ? (isAnimating ? 1.05 : 1.0) : 1.0)
+            .opacity(isActive ? (isAnimating ? 0.8 : 1.0) : 1.0)
+            .onAppear {
+                if isActive {
+                    withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                        isAnimating = true
+                    }
+                }
+            }
+            .onChange(of: isActive) { _, newValue in
+                if newValue {
+                    withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                        isAnimating = true
+                    }
+                } else {
+                    isAnimating = false
+                }
+            }
+    }
 } 

@@ -657,7 +657,7 @@ final class CameraManager: NSObject, ObservableObject {
                 
                 await MainActor.run {
                     self.processingProgress = 0.6
-                    self.processingStatus = "Exporting video..."
+                    self.processingStatus = "..."
                 }
                 
                 // Export using modern async API
@@ -678,7 +678,7 @@ final class CameraManager: NSObject, ObservableObject {
                 
                 await MainActor.run {
                     self.processingProgress = 1.0
-                    self.processingStatus = "Processing complete!"
+                    self.processingStatus = "Done"
                     self.isProcessingVideo = false
                     
                     // Save the processed video to photo library
@@ -752,25 +752,39 @@ final class CameraManager: NSObject, ObservableObject {
             self.lastSaveStatus = nil
         }
         
-        PHPhotoLibrary.shared().performChanges({
-            PHAssetCreationRequest.forAsset().addResource(with: .video, fileURL: videoURL, options: nil)
-        }) { [weak self] saved, error in
-            DispatchQueue.main.async {
-                self?.isSavingToLibrary = false
+        // Create or get the album with app name
+        createOrGetAlbum(named: getAppName()) { [weak self] album in
+            guard let self = self else { return }
+            
+            PHPhotoLibrary.shared().performChanges({
+                let createAssetRequest = PHAssetCreationRequest.forAsset()
+                createAssetRequest.addResource(with: .video, fileURL: videoURL, options: nil)
                 
-                if saved {
-                    self?.lastSaveStatus = "Video saved to camera roll! 📸"
-                } else if let error = error {
-                    self?.lastSaveStatus = "Failed to save video: \(error.localizedDescription)"
-                    self?.errorMessage = "Failed to save video: \(error.localizedDescription)"
-                } else {
-                    self?.lastSaveStatus = "Failed to save video to camera roll"
-                    self?.errorMessage = "Failed to save video to camera roll"
+                // Add to the custom album if it exists
+                if let album = album {
+                    let albumChangeRequest = PHAssetCollectionChangeRequest(for: album)
+                    if let placeholder = createAssetRequest.placeholderForCreatedAsset {
+                        albumChangeRequest?.addAssets([placeholder] as NSFastEnumeration)
+                    }
                 }
-                
-                // Clear status message after 3 seconds
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    self?.lastSaveStatus = nil
+            }) { [weak self] saved, error in
+                DispatchQueue.main.async {
+                    self?.isSavingToLibrary = false
+                    
+                                    if saved {
+                    self?.lastSaveStatus = "Video saved to \(self?.getAppName() ?? "90") album!"
+                } else if let error = error {
+                        self?.lastSaveStatus = "Failed to save video: \(error.localizedDescription)"
+                        self?.errorMessage = "Failed to save video: \(error.localizedDescription)"
+                    } else {
+                        self?.lastSaveStatus = "Failed to save video to camera roll"
+                        self?.errorMessage = "Failed to save video to camera roll"
+                    }
+                    
+                    // Clear status message after 3 seconds
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        self?.lastSaveStatus = nil
+                    }
                 }
             }
         }
@@ -843,6 +857,40 @@ final class CameraManager: NSObject, ObservableObject {
         let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let fileName = "video_\(Date().timeIntervalSince1970).mov"
         return documentsDirectory.appendingPathComponent(fileName)
+    }
+    
+    // MARK: - Album Management
+    private func getAppName() -> String {
+        return Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String ?? 
+               Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "90"
+    }
+    
+    private func createOrGetAlbum(named albumName: String, completion: @escaping (PHAssetCollection?) -> Void) {
+        // First, try to find existing album
+        let fetchOptions = PHFetchOptions()
+        fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+        let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+        
+        if let existingAlbum = collections.firstObject {
+            completion(existingAlbum)
+            return
+        }
+        
+        // Create new album if it doesn't exist
+        PHPhotoLibrary.shared().performChanges({
+            PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: albumName)
+        }) { success, error in
+            if success {
+                // Fetch the newly created album
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.predicate = NSPredicate(format: "title = %@", albumName)
+                let collections = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: fetchOptions)
+                completion(collections.firstObject)
+            } else {
+                print("Failed to create album: \(error?.localizedDescription ?? "Unknown error")")
+                completion(nil)
+            }
+        }
     }
     
     // MARK: - Preview Layer
