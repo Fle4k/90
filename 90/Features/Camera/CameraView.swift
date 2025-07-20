@@ -194,7 +194,7 @@ struct RingMenuView: View {
     }
     
     private var buttonCircle: some View {
-        ForEach(0..<8, id: \.self) { index in
+        ForEach(0..<6, id: \.self) { index in
             createControlButton(at: index)
         }
     }
@@ -210,7 +210,7 @@ struct RingMenuView: View {
     private func createControlButton(at index: Int) -> some View {
         let symbol = controlSymbols[index]
         let action = getButtonAction(for: index)
-        let angle = Double(index) * .pi / 4 - .pi / 2
+        let angle = Double(index) * .pi / 3 - .pi / 2
         let xPos = cos(angle) * buttonRadius
         let yPos = sin(angle) * buttonRadius
         
@@ -227,11 +227,9 @@ struct RingMenuView: View {
         symbols.append("arrow.triangle.2.circlepath.camera")  // Camera flip (top)
         symbols.append(viewModel.isFlashlightOn ? "bolt.fill" : "bolt.slash") // Flashlight toggle (top right)
         symbols.append(viewModel.isScreenDimmed ? "sun.min.fill" : "sun.max") // Screen dimming toggle (right)
-        symbols.append("ellipsis")                            // Three dots menu (bottom right)
-        symbols.append("photo.on.rectangle")                  // Gallery (bottom)
-        symbols.append("square.and.arrow.up")                 // Share (bottom left)
-        symbols.append("film.stack")                          // Settings (left)
-        symbols.append(viewModel.isAudioEnabled ? "speaker.wave.2" : "speaker.slash") // Audio toggle (top left)
+        symbols.append("photo.on.rectangle")                  // Gallery (bottom right)
+        symbols.append("ellipsis")                            // Three dots menu (bottom)
+        symbols.append(viewModel.isAudioEnabled ? "speaker.wave.2" : "speaker.slash") // Audio toggle (bottom left)
         return symbols
     }
     
@@ -243,15 +241,11 @@ struct RingMenuView: View {
             return { viewModel.toggleFlashlight() }
         case 2: // Screen dimming toggle
             return { viewModel.toggleScreenDimming() }
-        case 3: // Three dots menu
-            return { /* TODO: Implement menu */ }
-        case 4: // Gallery
+        case 3: // Gallery
             return { /* TODO: Implement gallery */ }
-        case 5: // Share
-            return { /* TODO: Implement share */ }
-        case 6: // Settings
-            return { /* TODO: Implement settings */ }
-        case 7: // Audio toggle
+        case 4: // Three dots menu
+            return { /* TODO: Implement menu */ }
+        case 5: // Audio toggle
             return { viewModel.toggleAudio() }
         default:
             return { }
