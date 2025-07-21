@@ -44,8 +44,7 @@ final class CameraViewModel: ObservableObject {
     var formattedDuration: String {
         let minutes = Int(recordingDuration) / 60
         let seconds = Int(recordingDuration) % 60
-        let centiseconds = Int((recordingDuration.truncatingRemainder(dividingBy: 1)) * 100)
-        return String(format: "%02d:%02d:%02d", minutes, seconds, centiseconds)
+        return String(format: "%02d'%02d", minutes, seconds)
     }
     
     // MARK: - Initializer

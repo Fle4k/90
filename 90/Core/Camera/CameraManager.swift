@@ -41,7 +41,7 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     // MARK: - Lens Properties
-    private var originalScreenBrightness: CGFloat = 1.0
+    // Removed originalScreenBrightness as we're using overlay instead of system brightness
     
     override init() {
         super.init()
@@ -531,15 +531,7 @@ final class CameraManager: NSObject, ObservableObject {
     }
     
     func toggleScreenDimming() {
-        if isScreenDimmed {
-            // Restore original brightness
-            UIScreen.main.brightness = originalScreenBrightness
-        } else {
-            // Store current brightness and dim screen
-            originalScreenBrightness = UIScreen.main.brightness
-            UIScreen.main.brightness = 0.02 // Very dim for dark concerts (2%)
-        }
-        
+        // Simply toggle the state - the overlay will be handled in the UI
         DispatchQueue.main.async {
             self.isScreenDimmed.toggle()
         }

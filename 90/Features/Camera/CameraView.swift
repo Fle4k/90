@@ -87,6 +87,15 @@ struct CameraView: View {
                     )
                     .padding(.bottom, 50)
                 }
+                
+                // Screen dimming overlay
+                if viewModel.isScreenDimmed {
+                    Color.black.opacity(0.8)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false) // Allow taps to pass through to buttons underneath
+                        .transition(.opacity)
+                        .animation(.easeInOut(duration: 0.3), value: viewModel.isScreenDimmed)
+                }
             }
         }
         .preferredColorScheme(.dark)
@@ -233,7 +242,7 @@ struct ControlButtonView: View {
         Button(action: action) {
             ZStack {
                 Circle()
-                    .fill(Color.black.opacity(0.3))
+                    .fill(Color.black.opacity(0.18))
                     .frame(width: size, height: size)
                 
                 Image(systemName: sfSymbol)
