@@ -148,6 +148,7 @@ struct RingMenuView: View {
     let isRecording: Bool
     let onRecordTap: () -> Void
     let viewModel: CameraViewModel
+    @State private var showingSettings = false
     
     private let buttonRadius: CGFloat = 112 // Decreased from 130 to bring icons closer
     private let buttonSize: CGFloat = 44
@@ -157,6 +158,10 @@ struct RingMenuView: View {
             backgroundImage
             buttonCircle
             recordButton
+        }
+        .sheet(isPresented: $showingSettings) {
+            SettingsSheetView()
+                .preferredColorScheme(.dark)
         }
     }
     
@@ -223,7 +228,7 @@ struct RingMenuView: View {
                 }
             }
         case 4: // Three dots menu
-            return { /* TODO: Implement menu */ }
+            return { showingSettings = true }
         case 5: // Audio toggle
             return { viewModel.toggleAudio() }
         default:
@@ -314,6 +319,158 @@ struct LensButton: View {
         }
         .scaleEffect(isSelected ? 1.1 : 1.0)
         .animation(.easeInOut(duration: 0.2), value: isSelected)
+    }
+}
+
+// MARK: - Settings Sheet View
+struct SettingsSheetView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                settingsList
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                }
+            }
+        }
+        .tint(.white)
+        .preferredColorScheme(.dark)
+    }
+    
+    // MARK: - Settings List
+    private var settingsList: some View {
+        List {
+            // Settings Section
+            Section {
+                startRecordingToggle
+                placeholderToggle1
+                placeholderToggle2
+            }
+            
+            // App Info Section
+            Section {
+                // Logo
+                HStack {
+                    Spacer()
+                    Image("metame_Logo")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 160)
+                        .padding(.vertical, 8)
+                        .onTapGesture {
+                            if let url = URL(string: "https://www.metame.de") {
+                                openURL(url)
+                            }
+                        }
+                    Spacer()
+                }
+                .listRowBackground(Color.clear)
+                
+                appVersionRow
+            }
+        }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(Color.black)
+    }
+    
+    // MARK: - Toggle Rows
+    @State private var startRecordingOnLaunch = false
+    @State private var placeholderToggle1State = false
+    @State private var placeholderToggle2State = false
+    
+    private var startRecordingToggle: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Record on launch")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                
+                Text("Automatically start recording when the app opens")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $startRecordingOnLaunch)
+                .toggleStyle(.switch)
+                .tint(.white)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var placeholderToggle1: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Lorem Ipsum Dolor")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                
+                Text("This is a placeholder setting for future features")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $placeholderToggle1State)
+                .toggleStyle(.switch)
+                .tint(.white)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var placeholderToggle2: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("mauris rhoncus")
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                
+                Text("Another placeholder setting for future features")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Toggle("", isOn: $placeholderToggle2State)
+                .toggleStyle(.switch)
+                .tint(.white)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    // MARK: - App Version Row
+    private var appVersionRow: some View {
+        VStack(spacing: 2) {
+            Text("Version")
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+            
+            Text("1.0")
+                .font(.caption)
+                .foregroundColor(.gray)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .listRowBackground(Color.clear)
     }
 }
 
