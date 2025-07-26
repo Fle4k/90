@@ -8,9 +8,12 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var themeManager = ThemeManager.shared
+    
     var body: some View {
         CameraView()
-            .preferredColorScheme(.dark)
+            .environmentObject(themeManager)
+            .preferredColorScheme(themeManager.currentTheme.colorScheme)
     }
 }
 

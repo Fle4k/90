@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Shahin Shokoui - Director & Editor. Passion for film.">
+    <meta name="keywords" content="Shahin, Shokoui, Director, Editor, Hamburgerkino, FilmFabrique, Hamburg, Editor, Cutter">
+    <meta name="author" content="Shahin Shokoui">
+    <meta name="robots" content="all">
+    
+    <!-- Publisher Info -->
+    <meta name="dc.publisher.name" content="Shahin Shokoui, shahin.de, shahin.eu">
+    <meta name="dc.publisher.phone" content="+4916012345678">
+    <meta name="dc.publisher.postal" content="D- Hamburg">
+    <meta name="dc.publisher.email" content="hi@shahin.de">
+    <meta name="copyright" content="HK">
+    
+    <title>SHAHIN SHOKOUI / DIRECTOR & EDITOR</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: #000;
+            color: #CCCCCC;
+            font-family: Arial, Helvetica, sans-serif;
+            line-height: 1.6;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        /* Background Animation */
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3;
+            transform: scale(1.5);
+            animation: slowFloat 20s ease-in-out infinite;
+        }
+        
+        @keyframes slowFloat {
+            0%, 100% {
+                transform: scale(1.5) translateY(0px);
+            }
+            50% {
+                transform: scale(1.5) translateY(-20px);
+            }
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Navigation Menu - Smaller Fonts */
+        .nav-menu {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 1px solid #333;
+        }
+        
+        .nav-item {
+            color: #666666;
+            text-decoration: none;
+            font-size: 14px; /* Reduced from 18px */
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .nav-item:hover {
+            color: #CCCCCC;
+        }
+        
+        .nav-item.active {
+            color: #CCCCCC;
+        }
+        
+        /* Content Sections */
+        .content-section {
+            display: none;
+            text-align: center;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        /* Video Layout - Vertical Stack */
+        .video-item {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .video-item iframe {
+            width: 500px;
+            height: 281px;
+            border: none;
+            border: 0;
+        }
+        
+        .video-item div {
+            margin-bottom: 20px;
+        }
+        
+        /* Header Images */
+        .header-images {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header-images img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        /* Bottom Padding */
+        .bottom-padding {
+            height: 107px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .nav-menu {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .nav-item {
+                font-size: 12px; /* Even smaller on mobile */
+            }
+            
+            .video-item iframe {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .container {
+                padding: 0 20px;
+            }
+        }
+        
+        /* Utility Classes */
+        .text-muted {
+            color: #666666;
+        }
+        
+        .text-center {
+            text-align: center;
+        }
+        
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+        
+        /* Cookie Consent Banner */
+        .cookie-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            color: #CCCCCC;
+            padding: 20px;
+            text-align: center;
+            z-index: 1000;
+            border-top: 1px solid #333;
+        }
+        
+        .cookie-banner p {
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        .cookie-banner button {
+            background: #3194bd;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        
+        .cookie-banner button:hover {
+            background: #00639c;
+        }
+        
+        .cookie-banner.hidden {
+            display: none;
+        }
+        
+        /* About Section */
+        .about-section {
+            text-align: center;
+            margin: 80px 0 40px 0;
+            padding: 0 20px;
+        }
+        
+        .about-section h2 {
+            color: #666666;
+            font-size: 24px;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+        }
+        
+        .about-section p {
+            color: #666666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .about-section a {
+            color: #3194bd;
+            text-decoration: none;
+        }
+        
+        .about-section a:hover {
+            color: #00639c;
+        }
+        
+        /* About Section Divider */
+        .about-divider {
+            border-bottom: 1px solid #333;
+            margin: 40px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Background Animation -->
+    <div class="background-animation">
+        <img src="Images/Shahin_de_Visi_Front.gif" alt="Background Animation" style="width: 100%; height: 100%; object-fit: cover;">
+    </div>
+
+    <div class="container">
+        <!-- Navigation Menu -->
+        <nav class="nav-menu">
+            <a href="#" class="nav-item active" onclick="showSection('music')">MUSIC</a>
+            <a href="#" class="nav-item" onclick="showSection('shortfilm')">SHORTFILM</a>
+            <a href="#" class="nav-item" onclick="showSection('interviews')">INTERVIEWS</a>
+        </nav>
+        
+        <!-- Header Images -->
+        <div class="header-images">
+            <img src="Images/Shahin_de_Visi_Front.gif" alt="Shahin Shokoui" width="500" height="281" usemap="#Map2">
+        </div>
+        
+        <!-- Music Section -->
+        <div id="music" class="content-section active">
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/375754948" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/293954059" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/229577894" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/238046780" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/169306210" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/117148268" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+        </div>
+        
+        <!-- Shortfilm Section -->
+        <div id="shortfilm" class="content-section">
+            <!-- Sick Man Video - Placeholder for your sick man content -->
+            <div class="video-item">
+                <div style="background: #333; padding: 40px; border-radius: 8px; margin-bottom: 20px;">
+                    <h3 style="color: #CCCCCC; margin-bottom: 15px;">SICK MAN</h3>
+                    <p style="color: #666666; font-size: 14px;">Your sick man video content will go here</p>
+                    <!-- Replace this div with your actual sick man video iframe when ready -->
+                </div>
+            </div>
+            
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/118678749" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/117148268" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/35765611" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/77730852" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/10648789" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/14744327" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/6693706" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/3814064" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/378288649" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+        </div>
+        
+        <!-- Interviews Section -->
+        <div id="interviews" class="content-section">
+            <div class="video-item">
+                <div style="padding:56.25% 0 0 0;position:relative;">
+                    <iframe src="https://player.vimeo.com/video/974094919?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Meine Utopie 30. Ray Cokes"></iframe>
+                </div>
+            </div>
+            <div class="video-item">
+                <div style="padding:56.25% 0 0 0;position:relative;">
+                    <iframe src="https://player.vimeo.com/video/975269088?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="my_utopia_#34__paul_watson_(sea_shepherd) (720p)"></iframe>
+                </div>
+            </div>
+            <div class="video-item">
+                <div style="padding:56.25% 0 0 0;position:relative;">
+                    <iframe src="https://player.vimeo.com/video/974073374?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="meine_utopie_#23._joshua_oppenheimer. (720p)"></iframe>
+                </div>
+            </div>
+            <div class="video-item">
+                <div style="padding:56.25% 0 0 0;position:relative;">
+                    <iframe src="https://player.vimeo.com/video/974098212?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="meine_utopie_#18__the_yes_men_&amp;_laura_nix_&amp;_benadette_kodili. (720p)"></iframe>
+                </div>
+            </div>
+            <div class="video-item">
+                <div style="padding:56.25% 0 0 0;position:relative;">
+                    <iframe src="https://player.vimeo.com/video/975268464?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="meine_utopie_#21._heinz_strunk. (1080p)"></iframe>
+                </div>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/378553109" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+            <div class="video-item">
+                <iframe src="https://player.vimeo.com/video/378539842" webkitallowfullscreen mozallowfullscreen allowfullscreen></iframe>
+            </div>
+        </div>
+        
+        <!-- Footer Image -->
+        <div class="text-center">
+            <img src="Images/Shahin_de_Visi_Back.jpg" alt="Footer" width="500" height="281" usemap="#Map">
+        </div>
+        
+        <!-- About Section Divider -->
+        <div class="about-divider"></div>
+        
+        <!-- About Section -->
+        <div class="about-section">
+            <h2>ABOUT</h2>
+            <p>Shahin Shokoui is a director and editor based in Hamburg, Germany. With a passion for film and storytelling, he creates compelling visual narratives across music videos, short films, and documentary work.</p>
+            <p>His work spans various genres and formats, from experimental short films to commercial music videos, always maintaining a distinctive visual style and strong narrative focus.</p>
+        </div>
+        
+        <!-- Bottom Padding -->
+        <div class="bottom-padding"></div>
+    </div>
+    
+    <!-- Cookie Consent Banner -->
+    <div id="cookieBanner" class="cookie-banner">
+        <p>Diese Seite verwendet nur Cookies und externe Inhalte von Vimeo. Durch die Nutzung der Seite stimmst du der Verwendung von Cookies von Vimeo zu.</p>
+        <button onclick="acceptCookies()">Akzeptieren</button>
+        <button onclick="declineCookies()">Ablehnen</button>
+    </div>
+    
+    <!-- Image Maps -->
+    <map name="Map">
+        <area shape="rect" coords="6,8,493,274" href="#">
+    </map>
+    
+    <map name="Map2">
+        <area shape="rect" coords="2,1,500,283" href="about.html">
+    </map>
+    
+    <script>
+        function showSection(sectionId) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.content-section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Remove active class from all nav items
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Show selected section
+            const selectedSection = document.getElementById(sectionId);
+            if (selectedSection) {
+                selectedSection.classList.add('active');
+            }
+            
+            // Add active class to clicked nav item
+            const clickedNavItem = event.target;
+            if (clickedNavItem.classList.contains('nav-item')) {
+                clickedNavItem.classList.add('active');
+            }
+        }
+        
+        // Initialize with music section active
+        document.addEventListener('DOMContentLoaded', function() {
+            showSection('music');
+            
+            // Check if user has already made a cookie choice
+            if (!localStorage.getItem('cookieChoice')) {
+                document.getElementById('cookieBanner').style.display = 'block';
+            }
+        });
+        
+        // Cookie consent functions
+        function acceptCookies() {
+            localStorage.setItem('cookieChoice', 'accepted');
+            document.getElementById('cookieBanner').classList.add('hidden');
+        }
+        
+        function declineCookies() {
+            localStorage.setItem('cookieChoice', 'declined');
+            document.getElementById('cookieBanner').classList.add('hidden');
+            // Note: Vimeo videos may not work properly if cookies are declined
+        }
+    </script>
+</body>
+</html> 
