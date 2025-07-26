@@ -66,6 +66,7 @@ struct CameraView: View {
                         Text(viewModel.formattedDuration)
                             .font(.system(size: 18, weight: .medium, design: .monospaced))
                             .foregroundColor(themeManager.colors.text)
+                            .frame(height: 44)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
                             .background(timerBackground)
@@ -73,7 +74,7 @@ struct CameraView: View {
                         Spacer()
                         
                         // Lens selection with theme design
-                        ThemedLensSelectionView(
+                        ThemedZoomControlsView(
                             viewModel: viewModel,
                             theme: themeManager.currentTheme,
                             colors: themeManager.colors
@@ -136,17 +137,22 @@ struct CameraView: View {
     private var progressBackground: some View {
         switch themeManager.currentTheme {
         case .dark:
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.colors.secondaryBackground)
+            // Dark mode: pill-shaped with dark grey background
+            Capsule()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .overlay(
+                    Capsule()
+                        .stroke(Color(red: 0.25, green: 0.25, blue: 0.27), lineWidth: 0.5)
+                )
         case .light:
-            RoundedRectangle(cornerRadius: 20)
-                .fill(themeManager.colors.secondaryBackground)
+            // Light mode: pill-shaped with original surface color
+            Capsule()
+                .fill(themeManager.colors.surface)
         case .neomorphic:
-            RoundedRectangle(cornerRadius: 20)
+            Capsule()
                 .fill(themeManager.colors.surface)
                 .shadow(color: themeManager.colors.shadow, radius: 8, x: 4, y: 4)
                 .shadow(color: themeManager.colors.highlight, radius: 8, x: -4, y: -4)
-
         }
     }
     
@@ -154,17 +160,22 @@ struct CameraView: View {
     private var timerBackground: some View {
         switch themeManager.currentTheme {
         case .dark:
-            RoundedRectangle(cornerRadius: 12)
-                .fill(themeManager.colors.surface)
+            // Dark mode: pill-shaped with dark grey background
+            Capsule()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .overlay(
+                    Capsule()
+                        .stroke(Color(red: 0.25, green: 0.25, blue: 0.27), lineWidth: 0.5)
+                )
         case .light:
-            RoundedRectangle(cornerRadius: 12)
+            // Light mode: pill-shaped with original surface color
+            Capsule()
                 .fill(themeManager.colors.surface)
         case .neomorphic:
-            RoundedRectangle(cornerRadius: 12)
+            Capsule()
                 .fill(themeManager.colors.surface)
                 .shadow(color: themeManager.colors.shadow, radius: 4, x: 2, y: 2)
                 .shadow(color: themeManager.colors.highlight, radius: 4, x: -2, y: -2)
-
         }
     }
 }
@@ -217,7 +228,7 @@ struct ThemedCameraPreviewArea: View {
         case .light:
             Color.black
         case .neomorphic:
-            RoundedRectangle(cornerRadius: 20)
+            RoundedRectangle(cornerRadius: 16)
                 .fill(colors.surface)
                 .shadow(color: colors.shadow.opacity(0.15), radius: 12, x: 6, y: 6)
                 .shadow(color: colors.highlight.opacity(0.9), radius: 12, x: -6, y: -6)
@@ -247,7 +258,7 @@ struct ThemedCameraPreviewArea: View {
         case .light:
             AnyShape(Rectangle())
         case .neomorphic:
-            AnyShape(RoundedRectangle(cornerRadius: 18))
+            AnyShape(RoundedRectangle(cornerRadius: 16))
         }
     }
     
@@ -266,7 +277,7 @@ struct ThemedCameraPreviewArea: View {
                     .frame(width: cropWidth, height: cropHeight)
                     .animation(.easeInOut(duration: 0.2), value: isRecording)
             case .neomorphic:
-                RoundedRectangle(cornerRadius: 20)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(colors.accent, lineWidth: 3)
                     .frame(width: cropWidth, height: cropHeight)
                     .animation(.easeInOut(duration: 0.2), value: isRecording)
@@ -465,42 +476,58 @@ struct ThemedRecordButton: View {
     }
 }
 
-// MARK: - Themed Lens Selection View
-struct ThemedLensSelectionView: View {
+// MARK: - Themed Zoom Controls View
+struct ThemedZoomControlsView: View {
     @ObservedObject var viewModel: CameraViewModel
     let theme: AppTheme
     let colors: ThemeColors
     
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(viewModel.availableLenses, id: \.self) { lensType in
-                ThemedLensButton(
-                    lensType: lensType,
-                    isSelected: viewModel.currentLensType == lensType,
-                    onTap: {
-                        viewModel.switchToLens(lensType)
-                    },
-                    theme: theme,
-                    colors: colors
-                )
-            }
+        HStack(spacing: 16) {
+            // Minus button
+            ThemedZoomButton(
+                symbol: "minus",
+                isEnabled: viewModel.canSwitchToPrevious,
+                onTap: {
+                    viewModel.switchToPreviousLens()
+                },
+                theme: theme,
+                colors: colors
+            )
+            
+            // Plus button
+            ThemedZoomButton(
+                symbol: "plus",
+                isEnabled: viewModel.canSwitchToNext,
+                onTap: {
+                    viewModel.switchToNextLens()
+                },
+                theme: theme,
+                colors: colors
+            )
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(lensSelectionBackground)
+        .background(zoomControlsBackground)
     }
     
     @ViewBuilder
-    private var lensSelectionBackground: some View {
+    private var zoomControlsBackground: some View {
         switch theme {
         case .dark:
-            RoundedRectangle(cornerRadius: 20)
-                .fill(colors.surface)
+            // Dark mode: pill-shaped with dark grey background
+            Capsule()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .overlay(
+                    Capsule()
+                        .stroke(Color(red: 0.25, green: 0.25, blue: 0.27), lineWidth: 0.5)
+                )
         case .light:
-            RoundedRectangle(cornerRadius: 20)
+            // Light mode: pill-shaped with original surface color
+            Capsule()
                 .fill(colors.surface)
         case .neomorphic:
-            RoundedRectangle(cornerRadius: 20)
+            Capsule()
                 .fill(colors.surface)
                 .shadow(color: colors.shadow, radius: 6, x: 3, y: 3)
                 .shadow(color: colors.highlight, radius: 6, x: -3, y: -3)
@@ -508,57 +535,47 @@ struct ThemedLensSelectionView: View {
     }
 }
 
-// MARK: - Themed Lens Button
-struct ThemedLensButton: View {
-    let lensType: AVCaptureDevice.DeviceType
-    let isSelected: Bool
+// MARK: - Themed Zoom Button
+struct ThemedZoomButton: View {
+    let symbol: String
+    let isEnabled: Bool
     let onTap: () -> Void
     let theme: AppTheme
     let colors: ThemeColors
     
-    private var displayText: String {
-        switch lensType {
-        case .builtInUltraWideCamera: return "0,5"
-        case .builtInWideAngleCamera: return "2×"
-        case .builtInTelephotoCamera: return "3"
-        default: return "2×"
-        }
-    }
-    
     var body: some View {
         Button(action: onTap) {
-            Text(displayText)
+            Image(systemName: symbol)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(isSelected ? .black : colors.text)
+                .foregroundColor(isEnabled ? colors.text : colors.secondaryText)
                 .frame(width: 44, height: 44)
-                .background(lensButtonBackground)
+                .background(zoomButtonBackground)
         }
-        .scaleEffect(isSelected ? 1.1 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isSelected)
+        .disabled(!isEnabled)
+        .scaleEffect(isEnabled ? 1.0 : 0.9)
+        .animation(.easeInOut(duration: 0.2), value: isEnabled)
     }
     
     @ViewBuilder
-    private var lensButtonBackground: some View {
+    private var zoomButtonBackground: some View {
         switch theme {
         case .dark:
-            Circle()
-                .fill(isSelected ? colors.secondary : Color.clear)
+            // Dark mode: pill-shaped button with dark grey background
+            Capsule()
+                .fill(isEnabled ? Color(red: 0.15, green: 0.15, blue: 0.17) : Color(red: 0.15, green: 0.15, blue: 0.17).opacity(0.3))
                 .overlay(
-                    Circle()
-                        .stroke(isSelected ? Color.clear : colors.border, lineWidth: 1)
+                    Capsule()
+                        .stroke(isEnabled ? Color(red: 0.25, green: 0.25, blue: 0.27) : Color(red: 0.25, green: 0.25, blue: 0.27).opacity(0.3), lineWidth: 0.5)
                 )
         case .light:
-            Circle()
-                .fill(isSelected ? colors.secondary : Color.clear)
-                .overlay(
-                    Circle()
-                        .stroke(isSelected ? Color.clear : colors.border, lineWidth: 1)
-                )
+            // Light mode: pill-shaped button with original surface color
+            Capsule()
+                .fill(isEnabled ? colors.surface : colors.surface.opacity(0.3))
         case .neomorphic:
-            Circle()
-                .fill(isSelected ? colors.secondary : colors.surface)
-                .shadow(color: colors.shadow, radius: 4, x: 2, y: 2)
-                .shadow(color: colors.highlight, radius: 4, x: -2, y: -2)
+            Capsule()
+                .fill(isEnabled ? colors.surface : colors.surface.opacity(0.3))
+                .shadow(color: isEnabled ? colors.shadow : colors.shadow.opacity(0.1), radius: 4, x: 2, y: 2)
+                .shadow(color: isEnabled ? colors.highlight : colors.highlight.opacity(0.1), radius: 4, x: -2, y: -2)
         }
     }
 }

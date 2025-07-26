@@ -140,22 +140,22 @@ final class CameraManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.availableLenses = availableTypes
             
-            // Set default to ultra-wide (0.5x) if available, as it's the most natural starting point
-            // on iPhone 15, otherwise fall back to wide angle
-            if availableTypes.contains(.builtInUltraWideCamera) {
-                self.currentLensType = .builtInUltraWideCamera
-            } else if availableTypes.contains(.builtInWideAngleCamera) {
+            // Set default to wide angle (1x) as it's the most natural starting point
+            // then ultra-wide (0.5x), then telephoto (3x)
+            if availableTypes.contains(.builtInWideAngleCamera) {
                 self.currentLensType = .builtInWideAngleCamera
+            } else if availableTypes.contains(.builtInUltraWideCamera) {
+                self.currentLensType = .builtInUltraWideCamera
             } else if let firstLens = availableTypes.first {
                 self.currentLensType = firstLens
             }
         }
         
         // Use the discovered lens type for camera setup
-        // Prefer ultra-wide as default, then wide-angle, then first available
-        let targetLensType = availableTypes.contains(.builtInUltraWideCamera) ? 
-            .builtInUltraWideCamera : (availableTypes.contains(.builtInWideAngleCamera) ? 
-            .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera))
+        // Prefer wide angle as default, then ultra-wide, then telephoto
+        let targetLensType = availableTypes.contains(.builtInWideAngleCamera) ? 
+            .builtInWideAngleCamera : (availableTypes.contains(.builtInUltraWideCamera) ? 
+            .builtInUltraWideCamera : (availableTypes.first ?? .builtInWideAngleCamera))
         
         guard let videoDevice = getCamera(for: position, deviceType: targetLensType) else {
             DispatchQueue.main.async {
@@ -203,7 +203,7 @@ final class CameraManager: NSObject, ObservableObject {
         )
         if !wideAngleDiscovery.devices.isEmpty {
             availableTypes.append(.builtInWideAngleCamera)
-            print("  ✓ Main camera (2x) available")
+            print("  ✓ Main camera (1x) available")
         }
         
         // Check telephoto
@@ -254,12 +254,12 @@ final class CameraManager: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.availableLenses = availableTypes
             
-            // Set default to ultra-wide (0.5x) if available, as it's the most natural starting point
-            // on iPhone 15, otherwise fall back to wide angle
-            if availableTypes.contains(.builtInUltraWideCamera) {
-                self.currentLensType = .builtInUltraWideCamera
-            } else if availableTypes.contains(.builtInWideAngleCamera) {
+            // Set default to wide angle (1x) as it's the most natural starting point
+            // then ultra-wide (0.5x), then telephoto (3x)
+            if availableTypes.contains(.builtInWideAngleCamera) {
                 self.currentLensType = .builtInWideAngleCamera
+            } else if availableTypes.contains(.builtInUltraWideCamera) {
+                self.currentLensType = .builtInUltraWideCamera
             } else if let firstLens = availableTypes.first {
                 self.currentLensType = firstLens
             }
@@ -271,13 +271,11 @@ final class CameraManager: NSObject, ObservableObject {
         case .builtInUltraWideCamera:
             return "0.5x"
         case .builtInWideAngleCamera:
-            // On iPhone 15, the main camera is actually 2x relative to ultra-wide
-            // So we need to check if this is the main camera or a true 1x
-            return "2x" // This is the main camera (24mm) on iPhone 15
+            return "1x"
         case .builtInTelephotoCamera:
-            return "3x" // This would be the telephoto if available
+            return "3x"
         default:
-            return "unknown"
+            return "1x"
         }
     }
     
@@ -347,22 +345,22 @@ final class CameraManager: NSObject, ObservableObject {
             DispatchQueue.main.async {
                 self.availableLenses = availableTypes
                 
-                            // Set default to ultra-wide (0.5x) if available, as it's the most natural starting point
-            // on iPhone 15, otherwise fall back to wide angle
-            if availableTypes.contains(.builtInUltraWideCamera) {
-                self.currentLensType = .builtInUltraWideCamera
-            } else if availableTypes.contains(.builtInWideAngleCamera) {
-                self.currentLensType = .builtInWideAngleCamera
-            } else if let firstLens = availableTypes.first {
-                self.currentLensType = firstLens
-            }
+                // Set default to wide angle (1x) as it's the most natural starting point
+                // then ultra-wide (0.5x), then telephoto (3x)
+                if availableTypes.contains(.builtInWideAngleCamera) {
+                    self.currentLensType = .builtInWideAngleCamera
+                } else if availableTypes.contains(.builtInUltraWideCamera) {
+                    self.currentLensType = .builtInUltraWideCamera
+                } else if let firstLens = availableTypes.first {
+                    self.currentLensType = firstLens
+                }
             }
             
             // Use the discovered lens type for camera setup
-            // Prefer ultra-wide as default, then wide-angle, then first available
-            let targetLensType = availableTypes.contains(.builtInUltraWideCamera) ? 
-                .builtInUltraWideCamera : (availableTypes.contains(.builtInWideAngleCamera) ? 
-                .builtInWideAngleCamera : (availableTypes.first ?? .builtInWideAngleCamera))
+            // Prefer wide angle as default, then ultra-wide, then telephoto
+            let targetLensType = availableTypes.contains(.builtInWideAngleCamera) ? 
+                .builtInWideAngleCamera : (availableTypes.contains(.builtInUltraWideCamera) ? 
+                .builtInUltraWideCamera : (availableTypes.first ?? .builtInWideAngleCamera))
             
             // Setup new camera
             if let newCamera = self.getCamera(for: newPosition, deviceType: targetLensType) {
@@ -468,12 +466,11 @@ final class CameraManager: NSObject, ObservableObject {
         case .builtInUltraWideCamera:
             return "0.5x"
         case .builtInWideAngleCamera:
-            // On iPhone 15, the main camera is actually 2x relative to ultra-wide
-            return "2x" // This is the main camera (24mm) on iPhone 15
+            return "1x"
         case .builtInTelephotoCamera:
-            return "3x" // This would be the telephoto if available
+            return "3x"
         default:
-            return "2x"
+            return "1x"
         }
     }
     
