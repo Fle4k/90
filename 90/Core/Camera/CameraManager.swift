@@ -2,6 +2,7 @@ import AVFoundation
 import SwiftUI
 import Combine
 import Photos
+import UIKit
 
 final class CameraManager: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -39,6 +40,7 @@ final class CameraManager: NSObject, ObservableObject {
     private var currentDevice: AVCaptureDevice? {
         videoDeviceInput?.device
     }
+    private var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
     
     // MARK: - Lens Properties
     // Removed originalScreenBrightness as we're using overlay instead of system brightness
@@ -46,6 +48,7 @@ final class CameraManager: NSObject, ObservableObject {
     override init() {
         super.init()
         checkPermissions()
+        setupSessionObservers()
     }
     
     // MARK: - Permission Handling
@@ -318,6 +321,34 @@ final class CameraManager: NSObject, ObservableObject {
                 if connection.isVideoRotationAngleSupported(90) {
                     connection.videoRotationAngle = 90 // Portrait orientation (90 degrees)
                 }
+            }
+        }
+    }
+
+    // MARK: - Session Notifications
+    private func setupSessionObservers() {
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionWasInterrupted(_:)), name: AVCaptureSession.wasInterruptedNotification, object: captureSession)
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionInterruptionEnded(_:)), name: AVCaptureSession.interruptionEndedNotification, object: captureSession)
+        NotificationCenter.default.addObserver(self, selector: #selector(sessionRuntimeError(_:)), name: AVCaptureSession.runtimeErrorNotification, object: captureSession)
+    }
+
+    @objc private func sessionWasInterrupted(_ notification: Notification) {
+        DispatchQueue.main.async { self.isSessionRunning = false }
+        // Stop recording to maintain file integrity
+        stopRecording()
+    }
+
+    @objc private func sessionInterruptionEnded(_ notification: Notification) {
+        startSession()
+    }
+
+    @objc private func sessionRuntimeError(_ notification: Notification) {
+        guard let error = notification.userInfo?[AVCaptureSessionErrorKey] as? AVError else { return }
+        if error.code == .mediaServicesWereReset {
+            startSession()
+        } else {
+            DispatchQueue.main.async {
+                self.errorMessage = "Camera error: \(error.localizedDescription)"
             }
         }
     }
@@ -649,7 +680,7 @@ final class CameraManager: NSObject, ObservableObject {
                     self.processingStatus = "..."
                 }
                 
-                // Export using modern async API
+                // Export using iOS 18 async API
                 guard let exportSession = AVAssetExportSession(asset: composition, presetName: AVAssetExportPresetHighestQuality) else {
                     await MainActor.run {
                         self.errorMessage = "Unable to create export session"
@@ -657,19 +688,33 @@ final class CameraManager: NSObject, ObservableObject {
                     }
                     return
                 }
-                
-                exportSession.outputURL = outputURL
-                exportSession.outputFileType = .mov
                 exportSession.videoComposition = videoComposition
-                
-                // Use modern async export
-                await exportSession.export()
-                
+
+                // Ensure output path is free
+                try? FileManager.default.removeItem(at: outputURL)
+
+                // Background task to keep exporting if app backgrounds (must hop to main actor)
+                if self.backgroundTaskID == .invalid {
+                    await MainActor.run {
+                        self.backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "VideoExport")
+                    }
+                }
+
+                await MainActor.run { self.processingStatus = "Exporting..." }
+
+                if #available(iOS 18.0, *) {
+                    try await exportSession.export(to: outputURL, as: .mov)
+                } else {
+                    // Fallback for older OS if needed
+                    exportSession.outputURL = outputURL
+                    exportSession.outputFileType = .mov
+                    await exportSession.export()
+                }
+
                 await MainActor.run {
                     self.processingProgress = 1.0
                     self.processingStatus = "Done"
                     self.isProcessingVideo = false
-                    
                     // Save the processed video to photo library
                     self.saveVideoToLibrary(outputURL)
                 }
@@ -679,6 +724,17 @@ final class CameraManager: NSObject, ObservableObject {
                     self.errorMessage = "Video processing failed: \(error.localizedDescription)"
                     self.isProcessingVideo = false
                     self.processingProgress = 0.0
+                    // Fallback: save original video to library so user never loses recording
+                    self.lastSaveStatus = "Processing failed – saving original"
+                }
+                // Attempt to save original
+                self.saveVideoToLibrary(inputURL)
+            }
+            // End background task if any
+            if self.backgroundTaskID != .invalid {
+                await MainActor.run {
+                    UIApplication.shared.endBackgroundTask(self.backgroundTaskID)
+                    self.backgroundTaskID = .invalid
                 }
             }
         }

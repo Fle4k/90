@@ -1,20 +1,21 @@
 import Foundation
 import SwiftUI
 import AVFoundation
+import UIKit
 
 // MARK: - Theme System
 enum AppTheme: String, CaseIterable, Identifiable {
+    case system = "system"
     case dark = "dark"
     case light = "light"
-    case neomorphic = "neomorphic"
     
     var id: String { rawValue }
     
     var displayName: String {
         switch self {
+        case .system: return "System"
         case .dark: return "Dark"
         case .light: return "Light"
-        case .neomorphic: return "Neomorphic"
         }
     }
     
@@ -22,7 +23,16 @@ enum AppTheme: String, CaseIterable, Identifiable {
         switch self {
         case .dark: return .dark
         case .light: return .light
-        case .neomorphic: return .light
+        case .system: return .light
+        }
+    }
+
+    // Use optional override for SwiftUI's preferredColorScheme: nil respects system
+    var colorSchemeOverride: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .dark: return .dark
+        case .light: return .light
         }
     }
 }
@@ -43,6 +53,38 @@ struct ThemeColors {
     
     static func colors(for theme: AppTheme) -> ThemeColors {
         switch theme {
+        case .system:
+            // Derive colors from current system appearance
+            let isDark = UIScreen.main.traitCollection.userInterfaceStyle == .dark
+            if isDark {
+                return ThemeColors(
+                    background: Color.black,
+                    secondaryBackground: Color.black.opacity(0.8),
+                    surface: Color.black.opacity(0.18),
+                    primary: Color.white,
+                    secondary: Color.gray,
+                    accent: Color.red,
+                    text: Color.white,
+                    secondaryText: Color.gray,
+                    border: Color.white.opacity(0.3),
+                    shadow: Color.clear,
+                    highlight: Color.clear
+                )
+            } else {
+                return ThemeColors(
+                    background: Color(red: 0.851, green: 0.859, blue: 0.820),
+                    secondaryBackground: Color.black.opacity(0.8),
+                    surface: Color.black.opacity(0.18),
+                    primary: Color.white,
+                    secondary: Color.gray,
+                    accent: Color.red,
+                    text: Color.white,
+                    secondaryText: Color.gray,
+                    border: Color.white.opacity(0.3),
+                    shadow: Color.clear,
+                    highlight: Color.clear
+                )
+            }
         case .dark:
             return ThemeColors(
                 background: Color.black,
@@ -70,20 +112,6 @@ struct ThemeColors {
                 border: Color.white.opacity(0.3),
                 shadow: Color.clear,
                 highlight: Color.clear
-            )
-        case .neomorphic:
-            return ThemeColors(
-                background: Color(red: 0.95, green: 0.95, blue: 0.97),
-                secondaryBackground: Color.white,
-                surface: Color.white,
-                primary: Color.primary,
-                secondary: Color.blue,
-                accent: Color.red,
-                text: Color.primary,
-                secondaryText: Color.secondary,
-                border: Color.clear,
-                shadow: Color.black.opacity(0.1),
-                highlight: Color.white.opacity(0.8)
             )
 
         }
@@ -193,6 +221,11 @@ struct UIConstants {
     // Colors for Liquid Glass compatibility
     static let backgroundOpacity: CGFloat = 0.6
     static let glassBlurRadius: CGFloat = 10
+    
+    // Gesture Constants
+    static let swipeDistanceThreshold: CGFloat = 80
+    static let swipeDirectionalRatio: CGFloat = 1.5  // horizontal vs vertical
+    static let gestureMinimumDistance: CGFloat = 30
 }
 
 // MARK: - Recording State

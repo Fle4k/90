@@ -4,6 +4,7 @@ import AVFoundation
 struct CameraView: View {
     @StateObject private var viewModel = CameraViewModel()
     @EnvironmentObject var themeManager: ThemeManager
+    @Environment(\.scenePhase) private var scenePhase
     
     private func getProgressText() -> String {
         if viewModel.isProcessingVideo {
@@ -108,10 +109,20 @@ struct CameraView: View {
                 }
             }
         }
-        .preferredColorScheme(themeManager.currentTheme.colorScheme)
+        .preferredColorScheme(themeManager.currentTheme.colorSchemeOverride)
         .onAppear {
             viewModel.requestPermissions()
             viewModel.startCameraSession()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                viewModel.startCameraSession()
+            case .inactive, .background:
+                viewModel.stopCameraSession()
+            @unknown default:
+                break
+            }
         }
     }
     
@@ -119,23 +130,21 @@ struct CameraView: View {
     @ViewBuilder
     private var themeBackground: some View {
         switch themeManager.currentTheme {
+        case .system:
+            themeManager.colors.background
         case .dark:
             themeManager.colors.background
         case .light:
             themeManager.colors.background
-        case .neomorphic:
-            LinearGradient(
-                colors: [Color(red: 0.95, green: 0.95, blue: 0.97), Color(red: 0.98, green: 0.98, blue: 1.0)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
         }
     }
     
     @ViewBuilder
     private var progressBackground: some View {
         switch themeManager.currentTheme {
+        case .system:
+            Capsule()
+                .fill(themeManager.colors.surface)
         case .dark:
             // Dark mode: pill-shaped with dark grey background
             Capsule()
@@ -148,17 +157,15 @@ struct CameraView: View {
             // Light mode: pill-shaped with original surface color
             Capsule()
                 .fill(themeManager.colors.surface)
-        case .neomorphic:
-            Capsule()
-                .fill(themeManager.colors.surface)
-                .shadow(color: themeManager.colors.shadow, radius: 8, x: 4, y: 4)
-                .shadow(color: themeManager.colors.highlight, radius: 8, x: -4, y: -4)
         }
     }
     
     @ViewBuilder
     private var timerBackground: some View {
         switch themeManager.currentTheme {
+        case .system:
+            Capsule()
+                .fill(themeManager.colors.surface)
         case .dark:
             // Dark mode: pill-shaped with dark grey background
             Capsule()
@@ -171,11 +178,6 @@ struct CameraView: View {
             // Light mode: pill-shaped with original surface color
             Capsule()
                 .fill(themeManager.colors.surface)
-        case .neomorphic:
-            Capsule()
-                .fill(themeManager.colors.surface)
-                .shadow(color: themeManager.colors.shadow, radius: 4, x: 2, y: 2)
-                .shadow(color: themeManager.colors.highlight, radius: 4, x: -2, y: -2)
         }
     }
 }
@@ -190,12 +192,12 @@ struct ThemedCameraPreviewArea: View {
     
     private var cropWidth: CGFloat {
         switch theme {
+        case .system:
+            return geometry.size.width
         case .dark:
             return geometry.size.width
         case .light:
             return geometry.size.width
-        case .neomorphic:
-            return geometry.size.width - 40
         }
     }
     
@@ -223,42 +225,39 @@ struct ThemedCameraPreviewArea: View {
     @ViewBuilder
     private var cameraBackground: some View {
         switch theme {
+        case .system:
+            Color.black
         case .dark:
             Color.black
         case .light:
             Color.black
-        case .neomorphic:
-            RoundedRectangle(cornerRadius: 16)
-                .fill(colors.surface)
-                .shadow(color: colors.shadow.opacity(0.15), radius: 12, x: 6, y: 6)
-                .shadow(color: colors.highlight.opacity(0.9), radius: 12, x: -6, y: -6)
         }
     }
     
     private var previewWidth: CGFloat {
         switch theme {
+        case .system: return cropWidth
         case .dark: return cropWidth
         case .light: return cropWidth
-        case .neomorphic: return cropWidth - 4
         }
     }
     
     private var previewHeight: CGFloat {
         switch theme {
+        case .system: return cropHeight
         case .dark: return cropHeight
         case .light: return cropHeight
-        case .neomorphic: return cropHeight - 4
         }
     }
     
     private var cameraClipShape: AnyShape {
         switch theme {
+        case .system:
+            AnyShape(Rectangle())
         case .dark:
             AnyShape(Rectangle())
         case .light:
             AnyShape(Rectangle())
-        case .neomorphic:
-            AnyShape(RoundedRectangle(cornerRadius: 16))
         }
     }
     
@@ -266,6 +265,11 @@ struct ThemedCameraPreviewArea: View {
     private var recordingIndicator: some View {
         if isRecording {
             switch theme {
+            case .system:
+                Rectangle()
+                    .stroke(colors.accent, lineWidth: 3)
+                    .frame(width: cropWidth, height: cropHeight)
+                    .animation(.easeInOut(duration: 0.2), value: isRecording)
             case .dark:
                 Rectangle()
                     .stroke(colors.accent, lineWidth: 3)
@@ -273,11 +277,6 @@ struct ThemedCameraPreviewArea: View {
                     .animation(.easeInOut(duration: 0.2), value: isRecording)
             case .light:
                 Rectangle()
-                    .stroke(colors.accent, lineWidth: 3)
-                    .frame(width: cropWidth, height: cropHeight)
-                    .animation(.easeInOut(duration: 0.2), value: isRecording)
-            case .neomorphic:
-                RoundedRectangle(cornerRadius: 16)
                     .stroke(colors.accent, lineWidth: 3)
                     .frame(width: cropWidth, height: cropHeight)
                     .animation(.easeInOut(duration: 0.2), value: isRecording)
@@ -325,6 +324,12 @@ struct ThemedRingMenuView: View {
     @ViewBuilder
     private var ringMenuBackground: some View {
         switch theme {
+        case .system:
+            // Default to light assets for system; can be enhanced using Environment colorScheme
+            Image(isRecording ? "90RecordButtonOnLight" : "90RecordButtonOffLight")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 300, height: 300)
         case .dark:
             // Use the original PDF images for dark theme
             Image(isRecording ? "90RecordButtonOnDark" : "90RecordButtonOffDark")
@@ -337,13 +342,6 @@ struct ThemedRingMenuView: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 300, height: 300)
-        case .neomorphic:
-            Circle()
-                .fill(colors.surface)
-                .shadow(color: colors.shadow.opacity(0.15), radius: 20, x: 10, y: 10)
-                .shadow(color: colors.highlight.opacity(0.9), radius: 20, x: -10, y: -10)
-                .frame(width: 300, height: 300)
-
         }
     }
     
@@ -418,17 +416,19 @@ struct ThemedControlButton: View {
     @ViewBuilder
     private var buttonBackground: some View {
         switch theme {
-        case .dark:
-            Circle()
+        case .system:
+            Capsule()
                 .fill(colors.surface)
+        case .dark:
+            Capsule()
+                .fill(Color(red: 0.15, green: 0.15, blue: 0.17))
+                .overlay(
+                    Capsule()
+                        .stroke(Color(red: 0.25, green: 0.25, blue: 0.27), lineWidth: 0.5)
+                )
         case .light:
             Circle()
                 .fill(colors.surface)
-        case .neomorphic:
-            Circle()
-                .fill(colors.surface)
-                .shadow(color: colors.shadow, radius: 6, x: 3, y: 3)
-                .shadow(color: colors.highlight, radius: 6, x: -3, y: -3)
         }
     }
 }
@@ -444,6 +444,11 @@ struct ThemedRecordButton: View {
         Button(action: onTap) {
             ZStack {
                 switch theme {
+                case .system:
+                    // For system theme, use transparent button over PDF
+                    Circle()
+                        .fill(Color.clear)
+                        .frame(width: 70, height: 70)
                 case .dark:
                     // For dark theme, use transparent button over PDF
                     Circle()
@@ -454,20 +459,6 @@ struct ThemedRecordButton: View {
                     Circle()
                         .fill(Color.clear)
                         .frame(width: 70, height: 70)
-                case .neomorphic:
-                    // Outer ring
-                    Circle()
-                        .fill(colors.surface)
-                        .shadow(color: colors.shadow.opacity(0.15), radius: 8, x: 4, y: 4)
-                        .shadow(color: colors.highlight, radius: 8, x: -4, y: -4)
-                        .frame(width: 80, height: 80)
-                    
-                    // Inner circle
-                    Circle()
-                        .fill(isRecording ? colors.accent : colors.secondary.opacity(0.3))
-                        .frame(width: 60, height: 60)
-                        .animation(.easeInOut(duration: 0.2), value: isRecording)
-
                 }
             }
         }
@@ -514,6 +505,9 @@ struct ThemedZoomControlsView: View {
     @ViewBuilder
     private var zoomControlsBackground: some View {
         switch theme {
+        case .system:
+            Capsule()
+                .fill(colors.surface)
         case .dark:
             // Dark mode: pill-shaped with dark grey background
             Capsule()
@@ -526,11 +520,6 @@ struct ThemedZoomControlsView: View {
             // Light mode: pill-shaped with original surface color
             Capsule()
                 .fill(colors.surface)
-        case .neomorphic:
-            Capsule()
-                .fill(colors.surface)
-                .shadow(color: colors.shadow, radius: 6, x: 3, y: 3)
-                .shadow(color: colors.highlight, radius: 6, x: -3, y: -3)
         }
     }
 }
@@ -559,6 +548,9 @@ struct ThemedZoomButton: View {
     @ViewBuilder
     private var zoomButtonBackground: some View {
         switch theme {
+        case .system:
+            Capsule()
+                .fill(isEnabled ? colors.surface : colors.surface.opacity(0.3))
         case .dark:
             // Dark mode: pill-shaped button with dark grey background
             Capsule()
@@ -571,11 +563,6 @@ struct ThemedZoomButton: View {
             // Light mode: pill-shaped button with original surface color
             Capsule()
                 .fill(isEnabled ? colors.surface : colors.surface.opacity(0.3))
-        case .neomorphic:
-            Capsule()
-                .fill(isEnabled ? colors.surface : colors.surface.opacity(0.3))
-                .shadow(color: isEnabled ? colors.shadow : colors.shadow.opacity(0.1), radius: 4, x: 2, y: 2)
-                .shadow(color: isEnabled ? colors.highlight : colors.highlight.opacity(0.1), radius: 4, x: -2, y: -2)
         }
     }
 }
@@ -601,11 +588,11 @@ struct ThemedSettingsSheetView: View {
                         dismiss()
                     }
                     .fontWeight(.semibold)
-                    .foregroundColor(colors.text)
+                    .foregroundColor(settingsPrimaryTextColor)
                 }
             }
         }
-        .tint(colors.text)
+        .tint(settingsPrimaryTextColor)
         .preferredColorScheme(theme.colorScheme)
     }
     
@@ -613,26 +600,20 @@ struct ThemedSettingsSheetView: View {
         List {
             // Theme Selection Section
             Section("Appearance") {
-                ForEach(AppTheme.allCases) { appTheme in
-                    HStack {
-                        Text(appTheme.displayName)
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(colors.text)
-                        
-                        Spacer()
-                        
-                        if themeManager.currentTheme == appTheme {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(colors.secondary)
-                        }
+                Picker(
+                    "Theme",
+                    selection: Binding(
+                        get: { themeManager.currentTheme },
+                        set: { themeManager.setTheme($0) }
+                    )
+                ) {
+                    ForEach(AppTheme.allCases) { appTheme in
+                        Text(appTheme.displayName).tag(appTheme)
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        themeManager.setTheme(appTheme)
-                    }
-                    .listRowBackground(settingsRowBackground)
                 }
+                .pickerStyle(.menu)
+                .tint(settingsPrimaryTextColor)
+                .listRowBackground(settingsRowBackground)
             }
             
             Section("Settings") {
@@ -678,11 +659,11 @@ struct ThemedSettingsSheetView: View {
                 Text("Record on launch")
                     .font(.body)
                     .fontWeight(.medium)
-                    .foregroundColor(colors.text)
+                    .foregroundColor(settingsPrimaryTextColor)
                 
                 Text("Automatically start recording when the app opens")
                     .font(.caption)
-                    .foregroundColor(colors.secondaryText)
+                    .foregroundColor(settingsSecondaryTextColor)
             }
             
             Spacer()
@@ -701,11 +682,11 @@ struct ThemedSettingsSheetView: View {
                 Text("Lorem Ipsum Dolor")
                     .font(.body)
                     .fontWeight(.medium)
-                    .foregroundColor(colors.text)
+                    .foregroundColor(settingsPrimaryTextColor)
                 
                 Text("This is a placeholder setting for future features")
                     .font(.caption)
-                    .foregroundColor(colors.secondaryText)
+                    .foregroundColor(settingsSecondaryTextColor)
             }
             
             Spacer()
@@ -724,11 +705,11 @@ struct ThemedSettingsSheetView: View {
                 Text("mauris rhoncus")
                     .font(.body)
                     .fontWeight(.medium)
-                    .foregroundColor(colors.text)
+                    .foregroundColor(settingsPrimaryTextColor)
                 
                 Text("Another placeholder setting for future features")
                     .font(.caption)
-                    .foregroundColor(colors.secondaryText)
+                    .foregroundColor(settingsSecondaryTextColor)
             }
             
             Spacer()
@@ -746,11 +727,11 @@ struct ThemedSettingsSheetView: View {
             Text("Version")
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(colors.text)
+                .foregroundColor(settingsPrimaryTextColor)
             
             Text("1.0")
                 .font(.caption)
-                .foregroundColor(colors.secondaryText)
+                .foregroundColor(settingsSecondaryTextColor)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 4)
@@ -761,11 +742,11 @@ struct ThemedSettingsSheetView: View {
     @ViewBuilder
     private var settingsRowBackground: some View {
         switch theme {
+        case .system:
+            colors.surface
         case .dark:
             colors.surface
         case .light:
-            colors.surface
-        case .neomorphic:
             colors.surface
         }
     }
@@ -773,33 +754,45 @@ struct ThemedSettingsSheetView: View {
     @ViewBuilder
     private var settingsListBackground: some View {
         switch theme {
+        case .system:
+            colors.background
         case .dark:
             colors.background
         case .light:
             colors.background
-        case .neomorphic:
-            LinearGradient(
-                colors: [Color(red: 0.95, green: 0.95, blue: 0.97), Color(red: 0.98, green: 0.98, blue: 1.0)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-
         }
     }
     
     @ViewBuilder
     private var logoBackground: some View {
         switch theme {
+        case .system:
+            EmptyView()
         case .dark:
             EmptyView()
         case .light:
             EmptyView()
-        case .neomorphic:
-            RoundedRectangle(cornerRadius: 16)
-                .fill(colors.surface)
-                .shadow(color: colors.shadow, radius: 8, x: 4, y: 4)
-                .shadow(color: colors.highlight, radius: 8, x: -4, y: -4)
+        }
+    }
+}
 
+// MARK: - Settings Text Colors Helpers
+private extension ThemedSettingsSheetView {
+    var settingsPrimaryTextColor: Color {
+        switch theme {
+        case .light, .system:
+            return Color.primary // Better contrast on light background
+        default:
+            return colors.text
+        }
+    }
+    
+    var settingsSecondaryTextColor: Color {
+        switch theme {
+        case .light, .system:
+            return Color.primary.opacity(0.65) // Darker description in light theme
+        default:
+            return colors.secondaryText
         }
     }
 }
