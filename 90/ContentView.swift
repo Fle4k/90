@@ -15,6 +15,10 @@ struct ContentView: View {
         CameraView()
             .environmentObject(themeManager)
             .preferredColorScheme(themeManager.currentTheme.colorScheme)
+            .onAppear {
+                // Ensure camera session starts early so auto-record can trigger
+                // CameraView already calls startCameraSession in onAppear, this is just a safeguard
+            }
     }
 }
 

@@ -31,6 +31,7 @@ final class CameraViewModel: ObservableObject {
     @Published var isProcessingVideo = false
     @Published var processingProgress: Float = 0.0
     @Published var processingStatus: String?
+    @Published var transientStatusMessage: String?
     
     // MARK: - Camera Manager
     @Published var cameraManager = CameraManager()
@@ -39,6 +40,7 @@ final class CameraViewModel: ObservableObject {
     private var recordingTimer: Timer?
     private var recordingStartTime: Date?
     private var cancellables = Set<AnyCancellable>()
+    private var didAutoStartRecordingOnLaunch = false
     
     // MARK: - Computed Properties
     var formattedDuration: String {
@@ -65,7 +67,13 @@ final class CameraViewModel: ObservableObject {
         
         cameraManager.$hasPermission
             .receive(on: DispatchQueue.main)
-            .assign(to: \.hasRecordingPermission, on: self)
+            .sink { [weak self] hasPerm in
+                guard let self = self else { return }
+                self.hasRecordingPermission = hasPerm
+                if hasPerm {
+                    self.tryAutoStartRecordingIfEnabled()
+                }
+            }
             .store(in: &cancellables)
         
         cameraManager.$errorMessage
@@ -140,10 +148,43 @@ final class CameraViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.processingStatus, on: self)
             .store(in: &cancellables)
+
+        // Auto-start recording when session becomes active if enabled
+        cameraManager.$isSessionRunning
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isRunning in
+                guard let self = self else { return }
+                if isRunning {
+                    self.tryAutoStartRecordingIfEnabled()
+                }
+            }
+            .store(in: &cancellables)
         
         // Initial lens UI setup after camera initialization
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.updateLensUI()
+        }
+    }
+
+    private func tryAutoStartRecordingIfEnabled() {
+        guard !didAutoStartRecordingOnLaunch else { return }
+        let shouldAutoRecord = UserDefaults.standard.bool(forKey: "recordOnLaunch")
+        guard shouldAutoRecord else { return }
+        guard hasRecordingPermission else { return }
+        guard !isRecording else { return }
+        didAutoStartRecordingOnLaunch = true
+        showTransientStatus("Auto recording started")
+        startRecording()
+    }
+
+    // MARK: - Transient Status Messaging
+    private func showTransientStatus(_ text: String, duration: TimeInterval = 2.5) {
+        transientStatusMessage = text
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) { [weak self] in
+            guard let self = self else { return }
+            if self.transientStatusMessage == text {
+                self.transientStatusMessage = nil
+            }
         }
     }
     

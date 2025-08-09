@@ -13,6 +13,8 @@ struct CameraView: View {
             return "Saving to camera roll..."
         } else if let status = viewModel.lastSaveStatus {
             return status
+        } else if let transient = viewModel.transientStatusMessage {
+            return transient
         }
         return ""
     }
@@ -31,7 +33,7 @@ struct CameraView: View {
                 VStack(spacing: 0) {
                     // Progress information with theme styling
                     VStack(spacing: 0) {
-                        if viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil {
+                        if viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil || viewModel.transientStatusMessage != nil {
                             Text(getProgressText())
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(themeManager.colors.text)
@@ -49,6 +51,7 @@ struct CameraView: View {
                     .animation(.easeInOut(duration: 0.3), value: viewModel.isProcessingVideo)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.transientStatusMessage != nil)
                     
                     Spacer()
                     
@@ -649,7 +652,7 @@ struct ThemedSettingsSheetView: View {
         .background(settingsListBackground)
     }
     
-    @State private var startRecordingOnLaunch = false
+    @AppStorage("recordOnLaunch") private var startRecordingOnLaunch = false
     @State private var placeholderToggle1State = false
     @State private var placeholderToggle2State = false
     
