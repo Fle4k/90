@@ -747,7 +747,7 @@ struct ThemedSettingsSheetView: View {
         case .dark:
             colors.surface
         case .light:
-            colors.surface
+            Color.clear
         }
     }
     
@@ -759,7 +759,7 @@ struct ThemedSettingsSheetView: View {
         case .dark:
             colors.background
         case .light:
-            colors.background
+            Color.clear
         }
     }
     
