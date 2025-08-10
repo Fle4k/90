@@ -171,10 +171,21 @@ final class CameraViewModel: ObservableObject {
         let shouldAutoRecord = UserDefaults.standard.bool(forKey: "recordOnLaunch")
         guard shouldAutoRecord else { return }
         guard hasRecordingPermission else { return }
+        guard cameraManager.isSessionRunning else { return }
         guard !isRecording else { return }
+        // Mark as scheduled to avoid duplicate attempts
         didAutoStartRecordingOnLaunch = true
-        showTransientStatus("Auto recording started")
-        startRecording()
+        // Slight delay to ensure movie output is ready after session starts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self = self, !self.isRecording else { return }
+            self.showTransientStatus("Auto recording started")
+            self.startRecording()
+        }
+    }
+
+    // Allow auto-record to trigger again on next foreground activation
+    func resetAutoRecordForNextActivation() {
+        didAutoStartRecordingOnLaunch = false
     }
 
     // MARK: - Transient Status Messaging

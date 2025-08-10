@@ -128,8 +128,8 @@ final class CameraManager: NSObject, ObservableObject {
                 self.captureSession.startRunning()
             }
             
-            // Update UI state on main thread
-            DispatchQueue.main.async {
+            // Update UI state on main thread (ensure true after startRunning())
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.isSessionRunning = self.captureSession.isRunning
             }
         }

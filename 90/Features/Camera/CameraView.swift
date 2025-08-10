@@ -120,6 +120,7 @@ struct CameraView: View {
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .active:
+                viewModel.resetAutoRecordForNextActivation()
                 viewModel.startCameraSession()
             case .inactive, .background:
                 viewModel.stopCameraSession()
@@ -621,8 +622,6 @@ struct ThemedSettingsSheetView: View {
             
             Section("Settings") {
                 themedStartRecordingToggle
-                themedPlaceholderToggle1
-                themedPlaceholderToggle2
             }
             
             Section {
@@ -653,18 +652,16 @@ struct ThemedSettingsSheetView: View {
     }
     
     @AppStorage("recordOnLaunch") private var startRecordingOnLaunch = false
-    @State private var placeholderToggle1State = false
-    @State private var placeholderToggle2State = false
     
     private var themedStartRecordingToggle: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Record on launch")
+                Text("Record While Active")
                     .font(.body)
                     .fontWeight(.medium)
                     .foregroundColor(settingsPrimaryTextColor)
                 
-                Text("Automatically start recording when the app opens")
+                Text("Recording starts each time the app is in the foreground.")
                     .font(.caption)
                     .foregroundColor(settingsSecondaryTextColor)
             }
@@ -679,51 +676,7 @@ struct ThemedSettingsSheetView: View {
         .listRowBackground(settingsRowBackground)
     }
     
-    private var themedPlaceholderToggle1: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Lorem Ipsum Dolor")
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(settingsPrimaryTextColor)
-                
-                Text("This is a placeholder setting for future features")
-                    .font(.caption)
-                    .foregroundColor(settingsSecondaryTextColor)
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: $placeholderToggle1State)
-                .toggleStyle(.switch)
-                .tint(colors.secondary)
-        }
-        .padding(.vertical, 4)
-        .listRowBackground(settingsRowBackground)
-    }
     
-    private var themedPlaceholderToggle2: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("mauris rhoncus")
-                    .font(.body)
-                    .fontWeight(.medium)
-                    .foregroundColor(settingsPrimaryTextColor)
-                
-                Text("Another placeholder setting for future features")
-                    .font(.caption)
-                    .foregroundColor(settingsSecondaryTextColor)
-            }
-            
-            Spacer()
-            
-            Toggle("", isOn: $placeholderToggle2State)
-                .toggleStyle(.switch)
-                .tint(colors.secondary)
-        }
-        .padding(.vertical, 4)
-        .listRowBackground(settingsRowBackground)
-    }
     
     private var themedAppVersionRow: some View {
         VStack(spacing: 2) {
