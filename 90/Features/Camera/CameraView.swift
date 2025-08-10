@@ -33,14 +33,24 @@ struct CameraView: View {
                 VStack(spacing: 0) {
                     // Progress information with theme styling
                     VStack(spacing: 0) {
-                        if viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil || viewModel.transientStatusMessage != nil {
-                            Text(getProgressText())
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(themeManager.colors.text)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 12)
-                                .background(progressBackground)
-                                .modifier(PulseAnimation(isActive: shouldShowPulse()))
+                        if viewModel.isRecording || viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil || viewModel.transientStatusMessage != nil {
+                            HStack(spacing: 8) {
+                                if viewModel.isRecording {
+                                    Circle()
+                                        .fill(Color.red)
+                                        .frame(width: 10, height: 10)
+                                }
+                                let text = getProgressText()
+                                if !text.isEmpty {
+                                    Text(text)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(themeManager.colors.text)
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(progressBackground)
+                            .modifier(PulseAnimation(isActive: shouldShowPulse()))
                         } else {
                             Color.clear
                                 .frame(height: 44)
@@ -52,6 +62,7 @@ struct CameraView: View {
                     .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
                     .animation(.easeInOut(duration: 0.3), value: viewModel.transientStatusMessage != nil)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isRecording)
                     
                     Spacer()
                     
@@ -220,8 +231,7 @@ struct ThemedCameraPreviewArea: View {
                 .frame(width: previewWidth, height: previewHeight)
                 .clipShape(cameraClipShape)
             
-            // Recording indicator
-            recordingIndicator
+            // Recording indicator removed (replaced by red dot in status area)
         }
         .frame(width: cropWidth, height: cropHeight)
     }
@@ -265,28 +275,7 @@ struct ThemedCameraPreviewArea: View {
         }
     }
     
-    @ViewBuilder
-    private var recordingIndicator: some View {
-        if isRecording {
-            switch theme {
-            case .system:
-                Rectangle()
-                    .stroke(colors.accent, lineWidth: 3)
-                    .frame(width: cropWidth, height: cropHeight)
-                    .animation(.easeInOut(duration: 0.2), value: isRecording)
-            case .dark:
-                Rectangle()
-                    .stroke(colors.accent, lineWidth: 3)
-                    .frame(width: cropWidth, height: cropHeight)
-                    .animation(.easeInOut(duration: 0.2), value: isRecording)
-            case .light:
-                Rectangle()
-                    .stroke(colors.accent, lineWidth: 3)
-                    .frame(width: cropWidth, height: cropHeight)
-                    .animation(.easeInOut(duration: 0.2), value: isRecording)
-            }
-        }
-    }
+    // Recording indicator removed; handled in top status area
 }
 
 // MARK: - Themed Ring Menu
@@ -617,7 +606,6 @@ struct ThemedSettingsSheetView: View {
                 }
                 .pickerStyle(.menu)
                 .tint(settingsPrimaryTextColor)
-                .listRowBackground(settingsRowBackground)
             }
             
             Section("Settings") {
@@ -647,8 +635,6 @@ struct ThemedSettingsSheetView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(settingsListBackground)
     }
     
     @AppStorage("recordOnLaunch") private var startRecordingOnLaunch = false
@@ -673,7 +659,7 @@ struct ThemedSettingsSheetView: View {
                 .tint(colors.secondary)
         }
         .padding(.vertical, 4)
-        .listRowBackground(settingsRowBackground)
+        
     }
     
     
@@ -685,7 +671,7 @@ struct ThemedSettingsSheetView: View {
                 .fontWeight(.medium)
                 .foregroundColor(settingsPrimaryTextColor)
             
-            Text("1.0")
+            Text("0.5.0")
                 .font(.caption)
                 .foregroundColor(settingsSecondaryTextColor)
         }
@@ -695,29 +681,7 @@ struct ThemedSettingsSheetView: View {
     }
     
     // MARK: - Theme-specific backgrounds
-    @ViewBuilder
-    private var settingsRowBackground: some View {
-        switch theme {
-        case .system:
-            colors.surface
-        case .dark:
-            colors.surface
-        case .light:
-            Color.clear
-        }
-    }
-    
-    @ViewBuilder
-    private var settingsListBackground: some View {
-        switch theme {
-        case .system:
-            colors.background
-        case .dark:
-            colors.background
-        case .light:
-            Color.clear
-        }
-    }
+    // Removed custom settings backgrounds to use standard iOS appearance for sections
     
     @ViewBuilder
     private var logoBackground: some View {
