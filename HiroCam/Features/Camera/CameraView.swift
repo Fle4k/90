@@ -647,7 +647,7 @@ struct ThemedSettingsSheetView: View {
                     .fontWeight(.medium)
                     .foregroundColor(settingsPrimaryTextColor)
                 
-                Text("Recording starts each time the app is in the foreground.")
+                Text("Recording starts each time the app launches or is in the foreground.")
                     .font(.caption)
                     .foregroundColor(settingsSecondaryTextColor)
             }
