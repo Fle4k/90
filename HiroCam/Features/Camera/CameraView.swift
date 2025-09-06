@@ -671,7 +671,7 @@ struct ThemedSettingsSheetView: View {
                 .fontWeight(.medium)
                 .foregroundColor(settingsPrimaryTextColor)
             
-            Text("0.5.0")
+            Text("1.0")
                 .font(.caption)
                 .foregroundColor(settingsSecondaryTextColor)
         }
