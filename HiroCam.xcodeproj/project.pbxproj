@@ -7,24 +7,24 @@
 	objects = {
 
 /* Begin PBXContainerItemProxy section */
-        DB92A24F2E2996FC00493C9D /* PBXContainerItemProxy */ = {
+		DB92A24F2E2996FC00493C9D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = DB92A2362E2996FB00493C9D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = DB92A23D2E2996FB00493C9D;
-            remoteInfo = HiroCam;
+			remoteInfo = HiroCam;
 		};
 		DB92A2592E2996FC00493C9D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = DB92A2362E2996FB00493C9D /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = DB92A23D2E2996FB00493C9D;
-            remoteInfo = HiroCam;
+			remoteInfo = HiroCam;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-        DB92A23E2E2996FB00493C9D /* HiroCam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HiroCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DB92A23E2E2996FB00493C9D /* HiroCam.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HiroCam.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB92A24E2E2996FC00493C9D /* HiroCamTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HiroCamTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DB92A2582E2996FC00493C9D /* HiroCamUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HiroCamUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -85,7 +85,7 @@
 		DB92A23F2E2996FB00493C9D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-                DB92A23E2E2996FB00493C9D /* HiroCam.app */,
+				DB92A23E2E2996FB00493C9D /* HiroCam.app */,
 				DB92A24E2E2996FC00493C9D /* HiroCamTests.xctest */,
 				DB92A2582E2996FC00493C9D /* HiroCamUITests.xctest */,
 			);
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-        DB92A23D2E2996FB00493C9D /* HiroCam */ = {
+		DB92A23D2E2996FB00493C9D /* HiroCam */ = {
 			isa = PBXNativeTarget;
-            buildConfigurationList = DB92A2622E2996FC00493C9D /* Build configuration list for PBXNativeTarget "HiroCam" */;
+			buildConfigurationList = DB92A2622E2996FC00493C9D /* Build configuration list for PBXNativeTarget "HiroCam" */;
 			buildPhases = (
 				DB92A23A2E2996FB00493C9D /* Sources */,
 				DB92A23B2E2996FB00493C9D /* Frameworks */,
@@ -110,11 +110,11 @@
 			fileSystemSynchronizedGroups = (
 				DB92A2402E2996FB00493C9D /* HiroCam */,
 			);
-            name = HiroCam;
+			name = HiroCam;
 			packageProductDependencies = (
 			);
-            productName = HiroCam;
-            productReference = DB92A23E2E2996FB00493C9D /* HiroCam.app */;
+			productName = HiroCam;
+			productReference = DB92A23E2E2996FB00493C9D /* HiroCam.app */;
 			productType = "com.apple.product-type.application";
 		};
 		DB92A24D2E2996FC00493C9D /* HiroCamTests */ = {
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-            buildConfigurationList = DB92A2392E2996FB00493C9D /* Build configuration list for PBXProject "HiroCam" */;
+			buildConfigurationList = DB92A2392E2996FB00493C9D /* Build configuration list for PBXProject "HiroCam" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,7 +200,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-                DB92A23D2E2996FB00493C9D /* HiroCam */,
+				DB92A23D2E2996FB00493C9D /* HiroCam */,
 				DB92A24D2E2996FC00493C9D /* HiroCamTests */,
 				DB92A2572E2996FC00493C9D /* HiroCamUITests */,
 			);
@@ -399,7 +399,7 @@
 				DEVELOPMENT_TEAM = QLZAR4XX2G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-                INFOPLIST_KEY_CFBundleDisplayName = HiroCam;
+				INFOPLIST_KEY_CFBundleDisplayName = HiroCam;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to record videos in 16:9 landscape format while holding your phone vertically.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record audio with your videos.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "This app needs photo library access to save your recorded videos to the camera roll.";
@@ -407,18 +407,23 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-                PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCam;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Debug;
 		};
@@ -433,7 +438,7 @@
 				DEVELOPMENT_TEAM = QLZAR4XX2G;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-                INFOPLIST_KEY_CFBundleDisplayName = HiroCam;
+				INFOPLIST_KEY_CFBundleDisplayName = HiroCam;
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to record videos in 16:9 landscape format while holding your phone vertically.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app needs microphone access to record audio with your videos.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "This app needs photo library access to save your recorded videos to the camera roll.";
@@ -441,18 +446,23 @@
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-                PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCam;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCam;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
+				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -466,12 +476,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "de.metame.HiroCamTests";
+				PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCamTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-                TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HiroCam.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HiroCam";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HiroCam.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HiroCam";
 			};
 			name = Debug;
 		};
@@ -485,12 +495,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "de.metame.HiroCamTests";
+				PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCamTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-                TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HiroCam.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HiroCam";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/HiroCam.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/HiroCam";
 			};
 			name = Release;
 		};
@@ -502,12 +512,12 @@
 				DEVELOPMENT_TEAM = QLZAR4XX2G;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "de.metame.HiroCamUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCamUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-                TEST_TARGET_NAME = HiroCam;
+				TEST_TARGET_NAME = HiroCam;
 			};
 			name = Debug;
 		};
@@ -519,19 +529,19 @@
 				DEVELOPMENT_TEAM = QLZAR4XX2G;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "de.metame.HiroCamUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = de.metame.HiroCamUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-                TEST_TARGET_NAME = HiroCam;
+				TEST_TARGET_NAME = HiroCam;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-        DB92A2392E2996FB00493C9D /* Build configuration list for PBXProject "HiroCam" */ = {
+		DB92A2392E2996FB00493C9D /* Build configuration list for PBXProject "HiroCam" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DB92A2602E2996FC00493C9D /* Debug */,
@@ -540,7 +550,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-        DB92A2622E2996FC00493C9D /* Build configuration list for PBXNativeTarget "HiroCam" */ = {
+		DB92A2622E2996FC00493C9D /* Build configuration list for PBXNativeTarget "HiroCam" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				DB92A2632E2996FC00493C9D /* Debug */,
