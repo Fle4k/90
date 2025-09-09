@@ -15,6 +15,10 @@ final class CameraManager: NSObject, ObservableObject {
     @Published var recordedVideoURL: URL?
     @Published var errorMessage: String?
     
+    // MARK: - Initialization State
+    @Published var isInitializing = true
+    private var isPermissionCheckInProgress = false
+    
     // MARK: - Photo Library Integration
     @Published var hasPhotoLibraryPermission = false
     @Published var isSavingToLibrary = false
@@ -53,6 +57,10 @@ final class CameraManager: NSObject, ObservableObject {
     
     // MARK: - Permission Handling
     func checkPermissions() {
+        // Prevent multiple concurrent permission checks
+        guard !isPermissionCheckInProgress else { return }
+        isPermissionCheckInProgress = true
+        
         Task {
             let cameraStatus = AVCaptureDevice.authorizationStatus(for: .video)
             let audioStatus = AVCaptureDevice.authorizationStatus(for: .audio)
@@ -61,14 +69,19 @@ final class CameraManager: NSObject, ObservableObject {
                 await MainActor.run {
                     hasPermission = true
                 }
-                setupSession()
+                await setupSessionAsync()
             } else if cameraStatus == .notDetermined || audioStatus == .notDetermined {
                 await requestPermissions()
             } else {
                 await MainActor.run {
                     hasPermission = false
                     errorMessage = "Camera and microphone permissions are required."
+                    isInitializing = false
                 }
+            }
+            
+            await MainActor.run {
+                self.isPermissionCheckInProgress = false
             }
         }
     }
@@ -81,57 +94,71 @@ final class CameraManager: NSObject, ObservableObject {
             await MainActor.run {
                 hasPermission = true
             }
-            setupSession()
+            await setupSessionAsync()
         } else {
             await MainActor.run {
                 hasPermission = false
                 errorMessage = "Camera and microphone access denied."
+                isInitializing = false
             }
         }
     }
     
     // MARK: - Session Setup
-    private func setupSession() {
+    private func setupSessionAsync() async {
         // Capture current state on main thread first
-        let currentPosition = cameraPosition
-        let audioEnabled = isAudioEnabled
+        let currentPosition = await MainActor.run { cameraPosition }
+        let audioEnabled = await MainActor.run { isAudioEnabled }
         
-        sessionQueue.async {
-            self.captureSession.beginConfiguration()
-            
-            // Set session preset for high quality vertical recording
-            if self.captureSession.canSetSessionPreset(.hd4K3840x2160) {
-                self.captureSession.sessionPreset = .hd4K3840x2160
-            } else if self.captureSession.canSetSessionPreset(.hd1920x1080) {
-                self.captureSession.sessionPreset = .hd1920x1080
-            } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
-                self.captureSession.sessionPreset = .hd1280x720
-            } else {
-                self.captureSession.sessionPreset = .high
+        // Perform heavy setup operations on background queue
+        await withCheckedContinuation { continuation in
+            sessionQueue.async {
+                self.captureSession.beginConfiguration()
+                
+                // Set session preset for high quality vertical recording
+                if self.captureSession.canSetSessionPreset(.hd4K3840x2160) {
+                    self.captureSession.sessionPreset = .hd4K3840x2160
+                } else if self.captureSession.canSetSessionPreset(.hd1920x1080) {
+                    self.captureSession.sessionPreset = .hd1920x1080
+                } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
+                    self.captureSession.sessionPreset = .hd1280x720
+                } else {
+                    self.captureSession.sessionPreset = .high
+                }
+                
+                // Setup video input with captured position
+                self.setupVideoInput(for: currentPosition)
+                
+                // Setup audio input with captured state
+                if audioEnabled {
+                    self.setupAudioInput()
+                }
+                
+                // Setup movie file output
+                self.setupMovieOutput()
+                
+                self.captureSession.commitConfiguration()
+                
+                // Start session on background thread (this is the blocking operation)
+                if !self.captureSession.isRunning {
+                    self.captureSession.startRunning()
+                }
+                
+                continuation.resume()
             }
-            
-            // Setup video input with captured position
-            self.setupVideoInput(for: currentPosition)
-            
-            // Setup audio input with captured state
-            if audioEnabled {
-                self.setupAudioInput()
-            }
-            
-            // Setup movie file output
-            self.setupMovieOutput()
-            
-            self.captureSession.commitConfiguration()
-            
-            // Start session on background thread
-            if !self.captureSession.isRunning {
-                self.captureSession.startRunning()
-            }
-            
-            // Update UI state on main thread (ensure true after startRunning())
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.isSessionRunning = self.captureSession.isRunning
-            }
+        }
+        
+        // Update UI state on main thread after session is fully ready
+        await MainActor.run {
+            self.isSessionRunning = self.captureSession.isRunning
+            self.isInitializing = false
+        }
+    }
+    
+    // Legacy method for backward compatibility
+    private func setupSession() {
+        Task {
+            await setupSessionAsync()
         }
     }
     

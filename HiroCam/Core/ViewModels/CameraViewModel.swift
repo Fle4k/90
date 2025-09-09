@@ -17,6 +17,9 @@ final class CameraViewModel: ObservableObject {
     @Published var availableLenses: [AVCaptureDevice.DeviceType] = []
     @Published var currentLensType: AVCaptureDevice.DeviceType = .builtInWideAngleCamera
     
+    // MARK: - Initialization State
+    @Published var isInitializing = true
+    
     // MARK: - New Toggle States
     @Published var isAudioEnabled = true
     @Published var isFlashlightOn = false
@@ -148,13 +151,20 @@ final class CameraViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .assign(to: \.processingStatus, on: self)
             .store(in: &cancellables)
+            
+        // Bind initialization state
+        cameraManager.$isInitializing
+            .receive(on: DispatchQueue.main)
+            .assign(to: \.isInitializing, on: self)
+            .store(in: &cancellables)
 
         // Auto-start recording when session becomes active if enabled
+        // Only try when initialization is complete to prevent race conditions
         cameraManager.$isSessionRunning
             .receive(on: DispatchQueue.main)
             .sink { [weak self] isRunning in
                 guard let self = self else { return }
-                if isRunning {
+                if isRunning && !self.isInitializing {
                     self.tryAutoStartRecordingIfEnabled()
                 }
             }
@@ -232,6 +242,8 @@ final class CameraViewModel: ObservableObject {
     
     // MARK: - Permission Methods
     func requestPermissions() {
+        // Only request permissions if not already in progress
+        // CameraManager now handles duplicate requests internally
         cameraManager.checkPermissions()
         cameraManager.checkPhotoLibraryPermission()
     }

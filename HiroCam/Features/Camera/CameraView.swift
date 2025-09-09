@@ -30,87 +30,22 @@ struct CameraView: View {
                 themeBackground
                     .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
-                    // Progress information with theme styling
-                    VStack(spacing: 0) {
-                        if viewModel.isRecording || viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil || viewModel.transientStatusMessage != nil {
-                            HStack(spacing: 8) {
-                                if viewModel.isRecording {
-                                    Circle()
-                                        .fill(Color.red)
-                                        .frame(width: 10, height: 10)
-                                }
-                                let text = getProgressText()
-                                if !text.isEmpty {
-                                    Text(text)
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(themeManager.colors.text)
-                                }
-                            }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 12)
-                            .background(progressBackground)
-                            .modifier(PulseAnimation(isActive: shouldShowPulse()))
-                        } else {
-                            Color.clear
-                                .frame(height: 44)
-                        }
-                    }
-                    .padding(.top, 20)
-                    .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.isProcessingVideo)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.transientStatusMessage != nil)
-                    .animation(.easeInOut(duration: 0.3), value: viewModel.isRecording)
-                    
-                    Spacer()
-                    
-                    // Camera preview area with theme styling
-                    ThemedCameraPreviewArea(
-                        cameraManager: viewModel.cameraManager,
-                        geometry: geometry,
-                        isRecording: viewModel.isRecording,
-                        theme: themeManager.currentTheme,
-                        colors: themeManager.colors
-                    )
-                    
-                    // Timer and lens controls with theme styling
-                    HStack {
-                        // Timer with theme design
-                        Text(viewModel.formattedDuration)
-                            .font(.system(size: 18, weight: .medium, design: .monospaced))
+                if viewModel.isInitializing {
+                    // Show loading state during initialization
+                    VStack(spacing: 20) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                            .tint(themeManager.colors.text)
+                        
+                        Text("Initializing Camera...")
+                            .font(.system(size: 16, weight: .medium))
                             .foregroundColor(themeManager.colors.text)
-                            .frame(height: 44)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(timerBackground)
-                        
-                        Spacer()
-                        
-                        // Lens selection with theme design
-                        ThemedZoomControlsView(
-                            viewModel: viewModel,
-                            theme: themeManager.currentTheme,
-                            colors: themeManager.colors
-                        )
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 16)
-                    
-                    Spacer()
-                    
-                    // Theme-aware ring menu
-                    ThemedRingMenuView(
-                        isRecording: viewModel.isRecording,
-                        onRecordTap: {
-                            viewModel.toggleRecording()
-                        },
-                        viewModel: viewModel,
-                        theme: themeManager.currentTheme,
-                        colors: themeManager.colors
-                    )
-                    .padding(.bottom, 50)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(themeManager.colors.background)
+                } else {
+                    // Main camera interface
+                    mainCameraInterface(geometry: geometry)
                 }
                 
                 // Screen dimming overlay
@@ -138,6 +73,92 @@ struct CameraView: View {
             @unknown default:
                 break
             }
+        }
+    }
+    
+    @ViewBuilder
+    private func mainCameraInterface(geometry: GeometryProxy) -> some View {
+        VStack(spacing: 0) {
+            // Progress information with theme styling
+            VStack(spacing: 0) {
+                if viewModel.isRecording || viewModel.isProcessingVideo || viewModel.isSavingToLibrary || viewModel.lastSaveStatus != nil || viewModel.transientStatusMessage != nil {
+                    HStack(spacing: 8) {
+                        if viewModel.isRecording {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 10, height: 10)
+                        }
+                        let text = getProgressText()
+                        if !text.isEmpty {
+                            Text(text)
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(themeManager.colors.text)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(progressBackground)
+                    .modifier(PulseAnimation(isActive: shouldShowPulse()))
+                } else {
+                    Color.clear
+                        .frame(height: 44)
+                }
+            }
+            .padding(.top, 20)
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.isProcessingVideo)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.isSavingToLibrary)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.lastSaveStatus != nil)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.transientStatusMessage != nil)
+            .animation(.easeInOut(duration: 0.3), value: viewModel.isRecording)
+            
+            Spacer()
+            
+            // Camera preview area with theme styling
+            ThemedCameraPreviewArea(
+                cameraManager: viewModel.cameraManager,
+                geometry: geometry,
+                isRecording: viewModel.isRecording,
+                theme: themeManager.currentTheme,
+                colors: themeManager.colors
+            )
+            
+            // Timer and lens controls with theme styling
+            HStack {
+                // Timer with theme design
+                Text(viewModel.formattedDuration)
+                    .font(.system(size: 18, weight: .medium, design: .monospaced))
+                    .foregroundColor(themeManager.colors.text)
+                    .frame(height: 44)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(timerBackground)
+                
+                Spacer()
+                
+                // Lens selection with theme design
+                ThemedZoomControlsView(
+                    viewModel: viewModel,
+                    theme: themeManager.currentTheme,
+                    colors: themeManager.colors
+                )
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 16)
+            
+            Spacer()
+            
+            // Theme-aware ring menu
+            ThemedRingMenuView(
+                isRecording: viewModel.isRecording,
+                onRecordTap: {
+                    viewModel.toggleRecording()
+                },
+                viewModel: viewModel,
+                theme: themeManager.currentTheme,
+                colors: themeManager.colors
+            )
+            .padding(.bottom, 50)
         }
     }
     
